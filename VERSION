@@ -1,0 +1,18 @@
+GPUStack UI Version 1.0 - Streaming Edition
+
+Build Date: June 24, 2025
+Features: Full-screen dark UI, streaming responses, file upload, web search
+Status: Production Ready
+Token Limit: 4000 tokens per response
+Backup Location: ../gpustack-ui-v1-streaming-backup/
+
+Key Components:
+- Frontend: HTML/JS with Tailwind CSS
+- Backend: FastAPI with streaming support  
+- Deployment: Docker Compose
+- Model Support: Qwen3 via GPUStack
+- File Processing: PDF, DOCX, images, text
+- Web Search: Tavily API integration
+- Streaming: Server-Sent Events implementation
+
+Next Version Target: Markdown rendering support

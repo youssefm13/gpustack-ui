@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+httpx
+python-multipart
+pdfplumber
+python-docx
+Pillow
+tavily-python
+
