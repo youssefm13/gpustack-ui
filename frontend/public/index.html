@@ -640,13 +640,30 @@
 
                 if (response.ok) {
                     const data = await response.json();
+                    console.log('Search response:', data); // Debug
                     updateStatus('searchStatus', 'Search completed!', 'text-green-400');
                     
-                    // Display structured search results
-                    displaySearchResults(data.result.results);
+                    // Extract search result data
+                    const searchResult = data.result;
+                    const results = searchResult.results || [];
+                    const llmSummary = searchResult.llm_summary || null;
+                    const processingStatus = searchResult.processing_status || null;
                     
-                    // Create context summary for AI
-                    const contextSummary = createSearchContextSummary(data.result.results);
+                    console.log('Results:', results.length, 'LLM:', !!llmSummary, 'Status:', processingStatus); // Debug
+                    
+                    // Display enhanced search results with LLM processing
+                    displaySearchResults(results, llmSummary, processingStatus);
+                    
+                    // Create enhanced context summary for AI
+                    let contextSummary;
+                    if (llmSummary && processingStatus === 'success') {
+                        // Use the LLM-processed summary as primary context
+                        contextSummary = `Web search for "${query}": ${llmSummary}`;
+                    } else {
+                        // Fall back to basic summary
+                        contextSummary = `Web search results for "${query}": ` + createSearchContextSummary(results);
+                    }
+                    
                     conversationContext.push({
                         role: "system",
                         content: contextSummary
@@ -925,8 +942,9 @@
             }
         }
         
-        // Display structured search results
-        function displaySearchResults(results) {
+        // Display enhanced AI summary with sources only (no raw results)
+        function displaySearchResults(results, llmSummary = null, processingStatus = null) {
+            console.log('displaySearchResults called with:', results.length, 'results'); // Debug
             const chatMessages = document.getElementById('chatMessages');
             
             // Clear initial message
@@ -937,27 +955,55 @@
             const messageDiv = document.createElement('div');
             messageDiv.className = 'chat-message mb-4 text-left';
             
-            let renderedContent = '<div class="whitespace-pre-wrap text-sm leading-relaxed" style="color: var(--text-secondary);">';
-            renderedContent += '<h3 class="text-lg font-semibold mb-3" style="color: var(--text-primary);">Web Search Results</h3>';
-            for (const result of results) {
-                // Handle both 'snippet' and 'content' fields
-                const snippet = result.snippet || result.content || 'No description available';
-                // Truncate long content
-                const truncatedSnippet = snippet.length > 200 ? snippet.substring(0, 200) + '...' : snippet;
+            let renderedContent = '';
+            
+            // Display enhanced AI summary with sources
+            if (llmSummary && processingStatus === 'success') {
+                // Process the AI summary for better rendering (including markdown-like formatting)
+                const processedSummary = renderMarkdown(llmSummary);
                 
-                renderedContent += `<div class="mb-3 pb-2" style="border-bottom: 1px solid var(--border-color);">
-                    <a href="${escapeHtml(result.url)}" target="_blank" class="text-lg font-semibold hover:underline" style="color: var(--accent-blue);">${escapeHtml(result.title)}</a>
-                    <p class="text-sm mt-1" style="color: var(--text-muted);">${escapeHtml(truncatedSnippet)}</p>
-                    <div class="text-xs mt-1" style="color: var(--text-muted); opacity: 0.75;">
-                        Score: ${escapeHtml(result.score)} | Published: ${escapeHtml(result.published_date || 'N/A')}
+                renderedContent = `<div class="p-4 rounded-lg" style="background-color: var(--bg-tertiary); border-left: 4px solid var(--accent-blue);">
+                    <h3 class="text-lg font-semibold mb-3" style="color: var(--accent-blue);">🔍 Search Analysis</h3>
+                    <div class="text-sm leading-relaxed" style="color: var(--text-primary);">
+                        ${processedSummary}
                     </div>
                 </div>`;
+            } else {
+                // Fallback when AI processing fails - show condensed results with sources
+                renderedContent = `<div class="p-4 rounded-lg" style="background-color: var(--bg-tertiary); border-left: 4px solid var(--accent-yellow);">
+                    <h3 class="text-lg font-semibold mb-3" style="color: var(--accent-yellow);">⚠️ Search Results</h3>
+                    <div class="text-sm mb-3" style="color: var(--text-muted);">AI processing unavailable (${processingStatus || 'unknown error'}). Showing condensed results:</div>`;
+                
+                // Show condensed results when AI processing fails
+                for (let i = 0; i < Math.min(results.length, 3); i++) {
+                    const result = results[i];
+                    const snippet = result.snippet || result.content || 'No description available';
+                    const truncatedSnippet = snippet.length > 200 ? snippet.substring(0, 200) + '...' : snippet;
+                    
+                    renderedContent += `<div class="mb-3 pb-2" style="border-bottom: 1px solid var(--border-color);">
+                        <div class="font-medium mb-1" style="color: var(--text-primary);">${escapeHtml(result.title)}</div>
+                        <div class="text-xs mb-1" style="color: var(--text-muted);">${escapeHtml(truncatedSnippet)}</div>
+                    </div>`;
+                }
+                
+                // Add sources section for fallback
+                renderedContent += `<div class="mt-4 pt-3" style="border-top: 1px solid var(--border-color);">
+                    <div class="font-semibold mb-2" style="color: var(--text-primary);">Sources:</div>`;
+                
+                results.forEach((result, index) => {
+                    renderedContent += `<div class="text-xs mb-1">
+                        <a href="${escapeHtml(result.url)}" target="_blank" class="hover:underline" style="color: var(--accent-blue);">
+                            [${index + 1}] ${escapeHtml(result.title)}
+                        </a>
+                    </div>`;
+                });
+                
+                renderedContent += `</div></div>`;
             }
-            renderedContent += '</div>';
 
             messageDiv.innerHTML = `
                 <div class="inline-block max-w-full lg:max-w-4xl px-4 py-3 rounded-lg" style="background-color: var(--bg-tertiary); color: var(--text-secondary); border: 1px solid var(--border-color);">
-                    <div class="text-xs opacity-75 mb-2" style="color: var(--text-primary);">System</div>
+                    <div class="text-xs opacity-75 mb-2" style="color: var(--text-primary);">Assistant</div>
                     ${renderedContent}
                 </div>
             `;
@@ -966,13 +1012,14 @@
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
 
-        // Create context summary for AI
+        // Create context summary for AI with more comprehensive content
         function createSearchContextSummary(results) {
             return results.map(result => {
                 const snippet = result.snippet || result.content || 'No description available';
-                const truncatedSnippet = snippet.length > 150 ? snippet.substring(0, 150) + '...' : snippet;
+                // Increased context limit for AI to 250 characters per result
+                const truncatedSnippet = snippet.length > 250 ? snippet.substring(0, 250) + '...' : snippet;
                 return `${result.title}: ${truncatedSnippet}`;
-            }).join(' ');
+            }).join(' | ');
         }
         
         // Load available models from GPUStack
