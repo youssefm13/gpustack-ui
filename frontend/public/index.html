@@ -576,7 +576,13 @@
                 return;
             }
 
-            updateStatus('uploadStatus', 'Uploading...', 'text-blue-400');
+            // Check file size on frontend (50MB limit)
+            if (file.size > 50 * 1024 * 1024) {
+                updateStatus('uploadStatus', 'File too large (max 50MB)', 'text-red-400');
+                return;
+            }
+
+            updateStatus('uploadStatus', 'Processing file...', 'text-blue-400');
 
             try {
                 const formData = new FormData();
@@ -589,34 +595,90 @@
 
                 if (response.ok) {
                     const data = await response.json();
-                    updateStatus('uploadStatus', 'File processed successfully!', 'text-green-400');
+                    console.log('Enhanced file processing result:', data); // Debug
                     
-                    // Add file content to chat
-                    addMessageToChat('system', `File "${file.name}" processed. Content extracted.`);
+                    // Create detailed status message
+                    const structureInfo = data.structure_info || {};
+                    const metadata = data.metadata || {};
                     
-                    // Add file content to conversation context for AI
+                    let statusDetails = [];
+                    if (structureInfo.word_count) statusDetails.push(`${structureInfo.word_count} words`);
+                    if (structureInfo.page_count) statusDetails.push(`${structureInfo.page_count} pages`);
+                    if (structureInfo.has_headers) statusDetails.push('structured content');
+                    if (structureInfo.has_tables) statusDetails.push('contains tables');
+                    
+                    const statusMessage = statusDetails.length > 0 
+                        ? `File processed successfully! (${statusDetails.join(', ')})`
+                        : 'File processed successfully!';
+                    
+                    updateStatus('uploadStatus', statusMessage, 'text-green-400');
+                    
+                    // Create enhanced file message with metadata
+                    const fileMessage = createEnhancedFileMessage(data);
+                    addMessageToChat('system', fileMessage);
+                    
+                    // Add optimized content to conversation context
                     if (data.content) {
-                        // Limit file content to prevent context overflow
-                        const truncatedContent = data.content.length > 1500 ? 
-                            data.content.substring(0, 1500) + '...[content truncated]' : 
-                            data.content;
-                        
                         conversationContext.push({
                             role: "system",
-                            content: `File content from ${file.name}: ${truncatedContent}`
+                            content: `File analysis from ${data.filename}: ${data.content}`
                         });
                         
-                        // Ensure we don't exceed context limits
-                        if (conversationContext.length > 10) {
-                            conversationContext = conversationContext.slice(-10);
+                        // Maintain context window efficiency
+                        if (conversationContext.length > 12) {
+                            conversationContext = conversationContext.slice(-12);
                         }
                     }
+                    
+                    // Clear file input
+                    fileInput.value = '';
+                    
                 } else {
-                    updateStatus('uploadStatus', 'Upload failed', 'text-red-400');
+                    const errorData = await response.json().catch(() => ({}));
+                    const errorMessage = errorData.detail || 'Upload failed';
+                    updateStatus('uploadStatus', errorMessage, 'text-red-400');
                 }
             } catch (error) {
                 updateStatus('uploadStatus', `Error: ${error.message}`, 'text-red-400');
             }
+        }
+        
+        function createEnhancedFileMessage(data) {
+            const { filename, content_type, metadata, structure_info, processing_notes } = data;
+            
+            let message = `**File Processed: ${filename}**\n\n`;
+            
+            // Add file type and basic info
+            message += `📄 **Type:** ${content_type}\n`;
+            
+            // Add metadata if available
+            if (metadata.title) message += `📝 **Title:** ${metadata.title}\n`;
+            if (metadata.author) message += `👤 **Author:** ${metadata.author}\n`;
+            
+            // Add structure information
+            if (structure_info) {
+                const details = [];
+                if (structure_info.word_count) details.push(`${structure_info.word_count} words`);
+                if (structure_info.page_count) details.push(`${structure_info.page_count} pages`);
+                if (structure_info.has_headers) details.push('structured sections');
+                if (structure_info.has_tables) details.push('data tables');
+                
+                if (details.length > 0) {
+                    message += `📊 **Content:** ${details.join(', ')}\n`;
+                }
+            }
+            
+            // Add processing notes
+            if (processing_notes && processing_notes.length > 0) {
+                message += `\n✅ **Processing:**\n`;
+                processing_notes.forEach(note => {
+                    message += `• ${note}\n`;
+                });
+            }
+            
+            message += `\n*The file content has been analyzed and optimized for AI interaction. You can now ask questions about this document.*`;
+            
+            return message;
         }
 
         async function performSearch() {

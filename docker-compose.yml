@@ -9,7 +9,15 @@ services:
       - GPUSTACK_API_KEY=${GPUSTACK_API_KEY}
     volumes:
       - ./backend:/app
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    # Multiple workers for better concurrency
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --workers 3
+    # Resource limits for better stability
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
 
   frontend:
     image: nginx:alpine

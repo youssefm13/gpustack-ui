@@ -1,12 +1,13 @@
 from tavily import TavilyClient
 from config import TAVILY_API_KEY, GPUSTACK_API_URL, GPUSTACK_API_KEY
-import requests
+import httpx
 import json
 import re
+import asyncio
 
 client = TavilyClient(api_key=TAVILY_API_KEY)
 
-def perform_web_search(query: str):
+async def perform_web_search_async(query: str, http_client: httpx.AsyncClient = None):
     # Enhance query for better results
     enhanced_query = enhance_search_query(query)
     
@@ -53,14 +54,14 @@ def perform_web_search(query: str):
     
     # Process results through LLM for better context
     try:
-        processed_results = process_search_results_with_llm(query, structured_results)
+        processed_results = await process_search_results_with_llm_async(query, structured_results, http_client)
         return processed_results
     except Exception as e:
         print(f"Error processing search results with LLM: {e}")
         # Return original results if LLM processing fails
         return structured_results
 
-def process_search_results_with_llm(query: str, search_results: dict):
+async def process_search_results_with_llm_async(query: str, search_results: dict, http_client: httpx.AsyncClient = None):
     """Process search results through LLM to create better summaries and context."""
     
     # Create a prompt for the LLM to process the search results
@@ -96,8 +97,11 @@ IMPORTANT: You MUST end your response with a "Sources:" section listing these ex
 Write in a clear, informative style that provides substantial value beyond just summarizing. Make it comprehensive and insightful."""
     
     try:
-        # Send request to GPUStack
-        response = requests.post(
+        # Use provided http_client or create a new one
+        client = http_client or httpx.AsyncClient(timeout=30.0)
+        
+        # Send async request to GPUStack
+        response = await client.post(
             GPUSTACK_API_URL,
             headers={
                 "Authorization": f"Bearer {GPUSTACK_API_KEY}",
@@ -112,9 +116,12 @@ Write in a clear, informative style that provides substantial value beyond just 
                 "max_tokens": 1200,  # Increased for comprehensive summaries with sources
                 "temperature": 0.2,  # Lower temperature for more factual responses
                 "stream": False
-            },
-            timeout=30
+            }
         )
+        
+        # Close client if we created it
+        if not http_client:
+            await client.aclose()
         
         if response.status_code == 200:
             data = response.json()
@@ -216,4 +223,11 @@ def enhance_search_query(query: str) -> str:
     
     # For general queries, add context for better content
     return f"{query} comprehensive information articles"
+
+# Backward compatibility - sync wrapper
+def perform_web_search(query: str):
+    """Synchronous wrapper for backward compatibility"""
+    return asyncio.get_event_loop().run_until_complete(
+        perform_web_search_async(query)
+    )
 
