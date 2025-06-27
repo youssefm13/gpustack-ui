@@ -14,8 +14,9 @@ class EnhancedFileProcessor:
     """
     
     def __init__(self):
-        self.max_content_length = 4000  # Increased from 1500
-        self.max_summary_length = 1000
+        self.max_content_length = 12000  # Significantly increased for large files
+        self.max_summary_length = 2000
+        self.chunk_size = 8000  # For processing very large files in chunks
     
     async def process_file(self, file: UploadFile) -> Dict[str, Any]:
         """Process file with enhanced capabilities and return structured data."""
@@ -262,21 +263,29 @@ Note: OCR text extraction will be available in the next update."""
         }
     
     def _optimize_content_for_context(self, content: str, structure: Dict, metadata: Dict) -> str:
-        """Optimize content for AI context with intelligent truncation."""
-        if not content or len(content) <= self.max_content_length:
+        """Optimize content for AI context with intelligent chunking and summarization."""
+        if not content:
+            return content
+            
+        # For small files, return as-is
+        if len(content) <= self.max_content_length:
             return content
         
         # Create optimized version with metadata summary
         optimization_summary = self._create_metadata_summary(metadata, structure)
         
-        # Calculate available space for content
-        available_space = self.max_content_length - len(optimization_summary) - 100
+        # For very large files, use intelligent chunking strategy
+        if len(content) > self.max_content_length * 3:  # 36K+ chars
+            return self._create_large_file_summary(content, structure, metadata, optimization_summary)
+        
+        # For moderately large files, use enhanced smart truncation
+        available_space = self.max_content_length - len(optimization_summary) - 200
         
         if available_space <= 0:
             return optimization_summary + "\n[Content too large to include]"
         
-        # Smart truncation - prioritize important sections
-        optimized_content = self._smart_truncate(content, available_space, structure)
+        # Enhanced smart truncation - prioritize important sections
+        optimized_content = self._enhanced_smart_truncate(content, available_space, structure)
         
         return f"{optimization_summary}\n\n{optimized_content}"
     
@@ -403,6 +412,190 @@ Note: OCR text extraction will be available in the next update."""
             return 1
         else:
             return 2
+
+    def _create_large_file_summary(self, content: str, structure: Dict, metadata: Dict, meta_summary: str) -> str:
+        """Create an intelligent summary for very large files."""
+        summary_parts = [meta_summary]
+        
+        # Extract key sections based on structure
+        if structure.get("headers"):
+            summary_parts.append("\n=== DOCUMENT STRUCTURE ===")
+            headers = structure["headers"][:20]  # Limit to first 20 headers
+            for header in headers:
+                level_prefix = "  " * (header.get("level", 1) - 1)
+                summary_parts.append(f"{level_prefix}- {header.get('text', '')}")
+        
+        # Add beginning of document
+        summary_parts.append("\n=== DOCUMENT BEGINNING ===")
+        beginning = content[:2000]
+        summary_parts.append(beginning)
+        
+        # Try to extract key sections from middle
+        if len(content) > 4000:
+            summary_parts.append("\n=== KEY SECTIONS ===")
+            middle_sections = self._extract_key_sections(content, structure)
+            summary_parts.extend(middle_sections)
+        
+        # Add document ending
+        if len(content) > 6000:
+            summary_parts.append("\n=== DOCUMENT ENDING ===")
+            ending = content[-1500:]
+            summary_parts.append(ending)
+        
+        summary_parts.append(f"\n[Note: This is an intelligent summary of a {len(content):,} character document. Key sections and structure preserved.]")
+        
+        result = "\n".join(summary_parts)
+        
+        # Ensure we don't exceed limits
+        if len(result) > self.max_content_length:
+            result = result[:self.max_content_length - 100] + "\n[Summary truncated]"
+        
+        return result
+    
+    def _extract_key_sections(self, content: str, structure: Dict) -> List[str]:
+        """Extract key sections from the middle of large documents."""
+        sections = []
+        lines = content.split('\n')
+        total_lines = len(lines)
+        
+        # Look for important keywords or patterns
+        important_keywords = [
+            'conclusion', 'summary', 'results', 'findings', 'recommendations',
+            'abstract', 'executive summary', 'key points', 'highlights',
+            'introduction', 'methodology', 'analysis', 'discussion'
+        ]
+        
+        # Scan through document for important sections
+        current_section = []
+        section_count = 0
+        max_sections = 3
+        
+        for i, line in enumerate(lines[100:-100]):  # Skip beginning and end
+            line_lower = line.lower().strip()
+            
+            # Check if this line indicates an important section
+            is_important = any(keyword in line_lower for keyword in important_keywords)
+            is_header = self._looks_like_header(line) or line.isupper()
+            
+            if is_important or is_header:
+                # Save previous section if it exists
+                if current_section and section_count < max_sections:
+                    section_text = '\n'.join(current_section[:15])  # Limit section length
+                    sections.append(f"\n--- Section {section_count + 1} ---\n{section_text}")
+                    section_count += 1
+                    current_section = []
+                
+                if section_count >= max_sections:
+                    break
+            
+            current_section.append(line)
+            
+            # Limit section size
+            if len(current_section) > 20:
+                current_section = current_section[-15:]  # Keep last 15 lines
+        
+        # Add last section if we have room
+        if current_section and section_count < max_sections:
+            section_text = '\n'.join(current_section[:15])
+            sections.append(f"\n--- Section {section_count + 1} ---\n{section_text}")
+        
+        return sections
+    
+    def _enhanced_smart_truncate(self, content: str, max_length: int, structure: Dict) -> str:
+        """Enhanced smart truncation with better section preservation."""
+        if len(content) <= max_length:
+            return content
+        
+        # Strategy 1: If we have clear structure, preserve complete sections
+        headers = structure.get("headers", [])
+        if headers and len(headers) > 2:
+            return self._truncate_by_complete_sections(content, max_length, headers)
+        
+        # Strategy 2: Preserve beginning + important middle + end
+        return self._truncate_with_sandwich_approach(content, max_length)
+    
+    def _truncate_by_complete_sections(self, content: str, max_length: int, headers: List[Dict]) -> str:
+        """Truncate by keeping complete sections."""
+        lines = content.split('\n')
+        result = []
+        current_length = 0
+        sections_included = 0
+        max_sections = min(5, len(headers))  # Include up to 5 sections
+        
+        # Include document beginning
+        beginning_lines = lines[:20]
+        for line in beginning_lines:
+            if current_length + len(line) + 1 > max_length * 0.4:  # Use 40% for beginning
+                break
+            result.append(line)
+            current_length += len(line) + 1
+        
+        # Try to include some complete sections
+        section_start_indicators = [h.get('text', '') for h in headers[:max_sections]]
+        
+        i = len(result)
+        while i < len(lines) and sections_included < max_sections:
+            line = lines[i]
+            if any(indicator in line for indicator in section_start_indicators if indicator):
+                # Start of a new section - try to include it completely
+                section_lines = [line]
+                j = i + 1
+                
+                # Collect lines until next section or reasonable limit
+                while j < len(lines) and len(section_lines) < 50:
+                    next_line = lines[j]
+                    if any(indicator in next_line for indicator in section_start_indicators[sections_included+1:] if indicator):
+                        break  # Found next section
+                    section_lines.append(next_line)
+                    j += 1
+                
+                # Check if we can fit this section
+                section_text = '\n'.join(section_lines)
+                if current_length + len(section_text) <= max_length * 0.9:  # Leave 10% buffer
+                    result.extend(section_lines)
+                    current_length += len(section_text)
+                    sections_included += 1
+                    i = j
+                else:
+                    break
+            else:
+                i += 1
+        
+        if current_length < len(content):
+            result.append(f"\n[Document truncated - {sections_included} of {len(headers)} sections included]")
+        
+        return '\n'.join(result)
+    
+    def _truncate_with_sandwich_approach(self, content: str, max_length: int) -> str:
+        """Use beginning + middle + end approach for documents without clear structure."""
+        # Allocate space: 50% beginning, 25% middle, 25% end
+        beginning_length = int(max_length * 0.5)
+        middle_length = int(max_length * 0.25)
+        end_length = int(max_length * 0.25)
+        
+        beginning = content[:beginning_length]
+        end = content[-end_length:]
+        
+        # Find interesting middle section
+        content_length = len(content)
+        middle_start = int(content_length * 0.4)  # Start at 40% through document
+        middle_end = middle_start + middle_length * 3  # Sample 3x the space we need
+        middle_sample = content[middle_start:middle_end]
+        
+        # Try to find a coherent section in the middle
+        middle_paragraphs = middle_sample.split('\n\n')
+        middle_content = []
+        middle_current_length = 0
+        
+        for para in middle_paragraphs:
+            if middle_current_length + len(para) + 2 > middle_length:
+                break
+            middle_content.append(para)
+            middle_current_length += len(para) + 2
+        
+        middle = '\n\n'.join(middle_content)
+        
+        return f"{beginning}\n\n[... middle sections omitted ...]\n\n{middle}\n\n[... sections omitted ...]\n\n{end}\n\n[Document truncated - key sections preserved]"
 
 # Create global instance
 file_processor = EnhancedFileProcessor()

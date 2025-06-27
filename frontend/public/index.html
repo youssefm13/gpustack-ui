@@ -235,16 +235,87 @@
             <div class="flex-1 flex flex-col m-4 rounded-lg min-h-0" style="background-color: var(--bg-secondary);">
                 <div class="p-4 flex-shrink-0 flex items-center justify-between" style="border-bottom: 1px solid var(--border-color);">
                     <h2 class="text-xl font-semibold" style="color: var(--text-primary);">Chat</h2>
-                    <button 
-                        onclick="clearChat()" 
-                        class="px-3 py-1 rounded text-xs transition-colors"
-                        style="background-color: var(--bg-quaternary); color: var(--text-secondary); border: 1px solid var(--border-color);"
-                        onmouseover="this.style.backgroundColor='var(--accent-red)'; this.style.color='white'"
-                        onmouseout="this.style.backgroundColor='var(--bg-quaternary)'; this.style.color='var(--text-secondary)'"
-                        title="Clear all chat messages"
-                    >
-                        🗑️ Clear Chat
-                    </button>
+                    <div class="flex items-center gap-2">
+                        <!-- Export Dropdown -->
+                        <div class="relative" id="exportDropdown">
+                            <button 
+                                onclick="toggleExportDropdown()" 
+                                class="px-3 py-1 rounded text-xs transition-colors flex items-center gap-1"
+                                style="background-color: var(--bg-quaternary); color: var(--text-secondary); border: 1px solid var(--border-color);"
+                                onmouseover="this.style.backgroundColor='var(--accent-blue)'; this.style.color='white'"
+                                onmouseout="this.style.backgroundColor='var(--bg-quaternary)'; this.style.color='var(--text-secondary)'"
+                                title="Export conversation in different formats"
+                            >
+                                📤 Export ▼
+                            </button>
+                            <div 
+                                id="exportMenu" 
+                                class="absolute top-full left-0 mt-1 w-40 rounded shadow-lg z-10" 
+                                style="background-color: var(--bg-tertiary); border: 1px solid var(--border-color); display: none;"
+                            >
+                                <button 
+                                    onclick="exportConversation('markdown')" 
+                                    class="w-full text-left px-3 py-2 text-xs hover:bg-opacity-80 transition-colors"
+                                    style="color: var(--text-primary); background-color: transparent;"
+                                    onmouseover="this.style.backgroundColor='var(--accent-blue)'; this.style.color='white'"
+                                    onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--text-primary)'"
+                                >
+                                    📄 Markdown (.md)
+                                </button>
+                                <button 
+                                    onclick="exportConversation('text')" 
+                                    class="w-full text-left px-3 py-2 text-xs hover:bg-opacity-80 transition-colors"
+                                    style="color: var(--text-primary); background-color: transparent;"
+                                    onmouseover="this.style.backgroundColor='var(--accent-blue)'; this.style.color='white'"
+                                    onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--text-primary)'"
+                                >
+                                    📝 Plain Text (.txt)
+                                </button>
+                                <button 
+                                    onclick="exportConversation('json')" 
+                                    class="w-full text-left px-3 py-2 text-xs hover:bg-opacity-80 transition-colors"
+                                    style="color: var(--text-primary); background-color: transparent;"
+                                    onmouseover="this.style.backgroundColor='var(--accent-blue)'; this.style.color='white'"
+                                    onmouseout="this.style.backgroundColor='transparent'; this.style.color='var(--text-primary)'"
+                                >
+                                    🔧 JSON (Technical)
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Import Button -->
+                        <button 
+                            onclick="triggerImport()" 
+                            class="px-3 py-1 rounded text-xs transition-colors"
+                            style="background-color: var(--bg-quaternary); color: var(--text-secondary); border: 1px solid var(--border-color);"
+                            onmouseover="this.style.backgroundColor='var(--accent-green)'; this.style.color='white'"
+                            onmouseout="this.style.backgroundColor='var(--bg-quaternary)'; this.style.color='var(--text-secondary)'"
+                            title="Import conversation from JSON, Markdown, or Text file"
+                        >
+                            📥 Import
+                        </button>
+                        
+                        <!-- Hidden file input for import -->
+                        <input 
+                            type="file" 
+                            id="importFileInput" 
+                            accept=".json,.md,.txt" 
+                            style="display: none;" 
+                            onchange="importConversation()"
+                        >
+                        
+                        <!-- Clear Button -->
+                        <button 
+                            onclick="clearChat()" 
+                            class="px-3 py-1 rounded text-xs transition-colors"
+                            style="background-color: var(--bg-quaternary); color: var(--text-secondary); border: 1px solid var(--border-color);"
+                            onmouseover="this.style.backgroundColor='var(--accent-red)'; this.style.color='white'"
+                            onmouseout="this.style.backgroundColor='var(--bg-quaternary)'; this.style.color='var(--text-secondary)'"
+                            title="Clear all chat messages"
+                        >
+                            🗑️ Clear
+                        </button>
+                    </div>
                 </div>
                 
                 <!-- Chat Messages -->
@@ -264,6 +335,7 @@
                             onkeypress="handleKeyPress(event)"
                         >
                         <button 
+                            id="sendButton"
                             onclick="sendMessage()" 
                             class="px-8 py-3 rounded-lg focus:outline-none focus:ring-2 transition-colors"
                             style="background-color: var(--accent-blue); color: white; focus:ring-color: var(--accent-blue);"
@@ -271,6 +343,17 @@
                             onmouseout="this.style.opacity='1'"
                         >
                             Send
+                        </button>
+                        
+                        <button 
+                            id="stopButton"
+                            onclick="stopChat()" 
+                            class="px-8 py-3 rounded-lg focus:outline-none focus:ring-2 transition-colors"
+                            style="background-color: var(--accent-red); color: white; focus:ring-color: var(--accent-red); display: none;"
+                            onmouseover="this.style.opacity='0.9'"
+                            onmouseout="this.style.opacity='1'"
+                        >
+                            Stop
                         </button>
                     </div>
                 </div>
@@ -364,6 +447,19 @@
         let conversationContext = [];
         let currentModel = 'qwen3';
         let availableModels = [];
+        
+        // Streaming state tracking
+        let currentAbortController = null;
+        let isStreaming = false;
+        
+        // Response metrics tracking
+        let responseMetrics = {
+            startTime: null,
+            firstTokenTime: null,
+            endTime: null,
+            totalTokens: 0,
+            isFirstToken: true
+        };
 
         // Check backend connection and load models on page load
         window.onload = function() {
@@ -421,11 +517,58 @@
             return Math.min(Math.max(maxTokens, 1000), 50000); // min 1000, max 50000
         }
 
+        function stopChat() {
+            if (currentAbortController) {
+                currentAbortController.abort();
+                currentAbortController = null;
+            }
+            
+            isStreaming = false;
+            updateButtonStates();
+            
+            // Add stop message to chat
+            addMessageToChat('system', 'Chat stopped by user.');
+        }
+        
+        function updateButtonStates() {
+            const sendButton = document.getElementById('sendButton');
+            const stopButton = document.getElementById('stopButton');
+            const messageInput = document.getElementById('messageInput');
+            
+            if (isStreaming) {
+                sendButton.style.display = 'none';
+                stopButton.style.display = 'flex';
+                messageInput.disabled = true;
+                messageInput.style.opacity = '0.5';
+            } else {
+                sendButton.style.display = 'flex';
+                stopButton.style.display = 'none';
+                messageInput.disabled = false;
+                messageInput.style.opacity = '1';
+            }
+        }
+
         async function sendMessage() {
             const input = document.getElementById('messageInput');
             const message = input.value.trim();
             
-            if (!message) return;
+            if (!message || isStreaming) return;
+
+            // Set streaming state
+            isStreaming = true;
+            updateButtonStates();
+            
+            // Initialize response metrics
+            responseMetrics = {
+                startTime: performance.now(),
+                firstTokenTime: null,
+                endTime: null,
+                totalTokens: 0,
+                isFirstToken: true
+            };
+            
+            // Create new AbortController for this request
+            currentAbortController = new AbortController();
 
             // Add user message to chat
             addMessageToChat('user', message);
@@ -445,6 +588,7 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
+                    signal: currentAbortController.signal,
                     body: JSON.stringify({
                         model: currentModel,
                         messages: [
@@ -462,6 +606,12 @@
                     
                     try {
                         while (true) {
+                            // Check if request was aborted
+                            if (currentAbortController.signal.aborted) {
+                                reader.cancel();
+                                break;
+                            }
+                            
                             const { value, done } = await reader.read();
                             if (done) break;
                             
@@ -482,6 +632,15 @@
                                             const content = parsed.choices?.[0]?.delta?.content || '';
                                             
                                             if (content) {
+                                                // Track first token time
+                                                if (responseMetrics.isFirstToken) {
+                                                    responseMetrics.firstTokenTime = performance.now();
+                                                    responseMetrics.isFirstToken = false;
+                                                }
+                                                
+                                                // Count tokens (approximate)
+                                                responseMetrics.totalTokens += content.length;
+                                                
                                                 fullResponse += content;
                                                 updateStreamingMessage(streamingMessageId, fullResponse);
                                             }
@@ -493,8 +652,14 @@
                             }
                         }
                         
+                        // Capture end time and finalize metrics
+                        responseMetrics.endTime = performance.now();
+                        
                         // Finalize the streaming message (remove cursor)
                         finalizeStreamingMessage(streamingMessageId, fullResponse);
+                        
+                        // Display response metrics
+                        displayResponseMetrics(streamingMessageId);
                         
                         // Update conversation context with complete response
                         conversationContext.push(
@@ -509,16 +674,29 @@
                         
                     } catch (streamError) {
                         console.error('Streaming error:', streamError);
-                        // Fall back to non-streaming
-                        await sendNonStreamingMessage(message, streamingMessageId);
+                        if (!currentAbortController.signal.aborted) {
+                            // Fall back to non-streaming only if not aborted
+                            await sendNonStreamingMessage(message, streamingMessageId);
+                        } else {
+                            removeMessage(streamingMessageId);
+                        }
                     }
                 } else {
                     // Fall back to non-streaming
                     await sendNonStreamingMessage(message, streamingMessageId);
                 }
             } catch (error) {
-                removeMessage(streamingMessageId);
-                addMessageToChat('system', `Error: ${error.message}`);
+                if (!currentAbortController.signal.aborted) {
+                    removeMessage(streamingMessageId);
+                    addMessageToChat('system', `Error: ${error.message}`);
+                } else {
+                    removeMessage(streamingMessageId);
+                }
+            } finally {
+                // Always reset streaming state
+                isStreaming = false;
+                currentAbortController = null;
+                updateButtonStates();
             }
         }
         
@@ -868,6 +1046,48 @@
             const messageElement = document.getElementById(messageId);
             if (messageElement) {
                 messageElement.remove();
+            }
+        }
+        
+        function displayResponseMetrics(messageId) {
+            // Calculate metrics
+            const totalTime = (responseMetrics.endTime - responseMetrics.startTime) / 1000; // seconds
+            const timeToFirstToken = responseMetrics.firstTokenTime ? 
+                (responseMetrics.firstTokenTime - responseMetrics.startTime) / 1000 : null;
+            
+            // Estimate tokens per second (rough approximation)
+            const estimatedTokens = Math.max(responseMetrics.totalTokens / 4, 1); // ~4 chars per token
+            const tokensPerSecond = estimatedTokens / totalTime;
+            
+            // Create metrics display
+            const messageElement = document.getElementById(messageId);
+            if (messageElement) {
+                const metricsDiv = document.createElement('div');
+                metricsDiv.className = 'mt-3 pt-2 text-xs opacity-70';
+                metricsDiv.style.borderTop = '1px solid var(--border-color)';
+                metricsDiv.style.color = 'var(--text-muted)';
+                
+                let metricsHtml = '';
+                
+                // Format metrics display
+                if (timeToFirstToken) {
+                    metricsHtml += `⚡ First token: ${timeToFirstToken.toFixed(2)}s | `;
+                }
+                
+                metricsHtml += `⏱️ Total time: ${totalTime.toFixed(2)}s | `;
+                metricsHtml += `🚀 Speed: ~${tokensPerSecond.toFixed(1)} tokens/s`;
+                
+                if (estimatedTokens > 1) {
+                    metricsHtml += ` | 📊 ~${Math.round(estimatedTokens)} tokens`;
+                }
+                
+                metricsDiv.innerHTML = metricsHtml;
+                
+                // Add to the message bubble
+                const bubbleContainer = messageElement.querySelector('.inline-block');
+                if (bubbleContainer) {
+                    bubbleContainer.appendChild(metricsDiv);
+                }
             }
         }
 
@@ -1227,6 +1447,427 @@
             if (savedModel) {
                 currentModel = savedModel;
             }
+        }
+        
+        // Conversation Export/Import functionality with multiple formats
+        function exportConversation(format = 'json') {
+            // Close the dropdown
+            toggleExportDropdown();
+            
+            // Get all chat messages from the UI
+            const chatMessages = document.getElementById('chatMessages');
+            const messageElements = chatMessages.querySelectorAll('.chat-message');
+            
+            if (messageElements.length === 0 || 
+                (messageElements.length === 1 && messageElements[0].textContent.includes('Start a conversation'))) {
+                alert('No conversation to export!');
+                return;
+            }
+            
+            // Extract messages data
+            const messages = [];
+            messageElements.forEach(messageEl => {
+                const roleHeader = messageEl.querySelector('.text-xs');
+                if (!roleHeader) return;
+                
+                const role = roleHeader.textContent.toLowerCase().trim();
+                const contentEl = messageEl.querySelector('.markdown-content, .whitespace-pre-wrap, div:not(.text-xs)');
+                
+                if (contentEl && role !== 'assistant' && role !== 'user' && role !== 'system') return;
+                
+                let content = '';
+                if (contentEl) {
+                    // For markdown content, get the text content to avoid HTML
+                    if (contentEl.classList.contains('markdown-content')) {
+                        content = contentEl.textContent.trim();
+                    } else {
+                        content = contentEl.textContent.trim();
+                    }
+                }
+                
+                if (content && role) {
+                    messages.push({
+                        role: role,
+                        content: content,
+                        timestamp: new Date().toISOString()
+                    });
+                }
+            });
+            
+            const dateStr = new Date().toISOString().split('T')[0];
+            let fileName, fileContent, mimeType;
+            
+            switch (format) {
+                case 'markdown':
+                    const { content: markdownContent, filename: mdFilename } = exportAsMarkdown(messages);
+                    fileName = `gpustack-conversation-${dateStr}.md`;
+                    fileContent = markdownContent;
+                    mimeType = 'text/markdown';
+                    break;
+                    
+                case 'text':
+                    const { content: textContent, filename: txtFilename } = exportAsText(messages);
+                    fileName = `gpustack-conversation-${dateStr}.txt`;
+                    fileContent = textContent;
+                    mimeType = 'text/plain';
+                    break;
+                    
+                case 'json':
+                default:
+                    // Create export data structure for JSON
+                    const exportData = {
+                        version: '1.0',
+                        exported_at: new Date().toISOString(),
+                        model: currentModel,
+                        message_count: messages.length,
+                        conversation: messages,
+                        context: conversationContext
+                    };
+                    fileName = `gpustack-conversation-${dateStr}.json`;
+                    fileContent = JSON.stringify(exportData, null, 2);
+                    mimeType = 'application/json';
+                    break;
+            }
+            
+            // Create and download file
+            const dataBlob = new Blob([fileContent], { type: mimeType });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(dataBlob);
+            link.download = fileName;
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            // Show success message
+            const formatName = format.charAt(0).toUpperCase() + format.slice(1);
+            addMessageToChat('system', `✅ Conversation exported as ${formatName}! (${messages.length} messages)`);
+        }
+        
+        function exportAsMarkdown(messages) {
+            let content = `# GPUStack Conversation\n\n`;
+            content += `**Exported:** ${new Date().toLocaleString()}  \n`;
+            content += `**Model:** ${currentModel}  \n`;
+            content += `**Messages:** ${messages.length}\n\n`;
+            content += `---\n\n`;
+            
+            messages.forEach((msg, index) => {
+                const roleEmoji = {
+                    'user': '👤',
+                    'assistant': '🤖',
+                    'system': '⚙️'
+                }[msg.role] || '📝';
+                
+                content += `## ${roleEmoji} ${msg.role.charAt(0).toUpperCase() + msg.role.slice(1)}\n\n`;
+                content += `${msg.content}\n\n`;
+                
+                if (index < messages.length - 1) {
+                    content += `---\n\n`;
+                }
+            });
+            
+            content += `\n---\n*Exported from GPUStack UI*`;
+            
+            return { content, filename: 'markdown' };
+        }
+        
+        function exportAsText(messages) {
+            let content = `GPUStack Conversation\n`;
+            content += `========================\n\n`;
+            content += `Exported: ${new Date().toLocaleString()}\n`;
+            content += `Model: ${currentModel}\n`;
+            content += `Messages: ${messages.length}\n\n`;
+            
+            messages.forEach((msg, index) => {
+                const roleHeader = `[${msg.role.toUpperCase()}]`;
+                content += `${roleHeader}\n`;
+                content += `${'-'.repeat(roleHeader.length)}\n`;
+                content += `${msg.content}\n\n`;
+                
+                if (index < messages.length - 1) {
+                    content += `${'='.repeat(50)}\n\n`;
+                }
+            });
+            
+            content += `\n${'='.repeat(50)}\nExported from GPUStack UI`;
+            
+            return { content, filename: 'text' };
+        }
+        
+        function toggleExportDropdown() {
+            const exportMenu = document.getElementById('exportMenu');
+            if (exportMenu.style.display === 'none' || exportMenu.style.display === '') {
+                exportMenu.style.display = 'block';
+                // Close dropdown when clicking outside
+                setTimeout(() => {
+                    document.addEventListener('click', closeExportDropdown, { once: true });
+                }, 100);
+            } else {
+                exportMenu.style.display = 'none';
+            }
+        }
+        
+        function closeExportDropdown(event) {
+            const exportDropdown = document.getElementById('exportDropdown');
+            if (!exportDropdown.contains(event.target)) {
+                document.getElementById('exportMenu').style.display = 'none';
+            }
+        }
+        
+        function triggerImport() {
+            const fileInput = document.getElementById('importFileInput');
+            fileInput.click();
+        }
+        
+        function importConversation() {
+            const fileInput = document.getElementById('importFileInput');
+            const file = fileInput.files[0];
+            
+            if (!file) return;
+            
+            // Detect file format
+            const fileName = file.name.toLowerCase();
+            let formatType = 'unknown';
+            
+            if (fileName.endsWith('.json')) {
+                formatType = 'json';
+            } else if (fileName.endsWith('.md') || fileName.endsWith('.markdown')) {
+                formatType = 'markdown';
+            } else if (fileName.endsWith('.txt')) {
+                formatType = 'text';
+            } else {
+                alert('Please select a JSON (.json), Markdown (.md), or Text (.txt) file!');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const fileContent = e.target.result;
+                    let importData;
+                    
+                    // Parse file based on format
+                    switch (formatType) {
+                        case 'json':
+                            importData = parseJsonImport(fileContent);
+                            break;
+                        case 'markdown':
+                            importData = parseMarkdownImport(fileContent);
+                            break;
+                        case 'text':
+                            importData = parseTextImport(fileContent);
+                            break;
+                        default:
+                            throw new Error('Unsupported file format');
+                    }
+                    
+                    // Validate parsed data
+                    if (!importData.conversation || !Array.isArray(importData.conversation)) {
+                        throw new Error('No valid conversation found in file');
+                    }
+                    
+                    // Ask for confirmation
+                    const messageCount = importData.conversation.length;
+                    const formatName = formatType.charAt(0).toUpperCase() + formatType.slice(1);
+                    
+                    if (!confirm(`Import ${formatName} conversation with ${messageCount} messages?\n\nThis will clear your current conversation.`)) {
+                        return;
+                    }
+                    
+                    // Clear current conversation
+                    clearChat();
+                    
+                    // Import messages
+                    let importedCount = 0;
+                    importData.conversation.forEach(msg => {
+                        if (msg.role && msg.content && 
+                            ['user', 'assistant', 'system'].includes(msg.role)) {
+                            addMessageToChat(msg.role, msg.content);
+                            importedCount++;
+                        }
+                    });
+                    
+                    // Restore conversation context if available (JSON only)
+                    if (importData.context && Array.isArray(importData.context)) {
+                        conversationContext = importData.context;
+                    } else {
+                        // Rebuild context from imported messages
+                        conversationContext = [];
+                        importData.conversation.forEach(msg => {
+                            if (['user', 'assistant'].includes(msg.role)) {
+                                conversationContext.push({
+                                    role: msg.role,
+                                    content: msg.content
+                                });
+                            }
+                        });
+                    }
+                    
+                    // Update model if specified (JSON only)
+                    if (importData.model && importData.model !== currentModel) {
+                        const modelSelector = document.getElementById('modelSelector');
+                        const modelOption = Array.from(modelSelector.options).find(opt => opt.value === importData.model);
+                        if (modelOption) {
+                            currentModel = importData.model;
+                            modelSelector.value = currentModel;
+                            updateModelInfo();
+                        }
+                    }
+                    
+                    // Show success message
+                    addMessageToChat('system', `✅ ${formatName} conversation imported successfully! (${importedCount} messages)`);
+                    
+                } catch (error) {
+                    console.error('Import error:', error);
+                    alert(`Failed to import conversation: ${error.message}`);
+                }
+            };
+            
+            reader.readAsText(file);
+            fileInput.value = ''; // Clear the input
+        }
+        
+        function parseJsonImport(content) {
+            const data = JSON.parse(content);
+            
+            // Validate JSON structure
+            if (!data.conversation || !Array.isArray(data.conversation)) {
+                throw new Error('Invalid JSON conversation format');
+            }
+            
+            return data;
+        }
+        
+        function parseMarkdownImport(content) {
+            const messages = [];
+            let currentRole = null;
+            let currentContent = '';
+            
+            const lines = content.split('\n');
+            
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                
+                // Look for role headers (## 👤 User, ## 🤖 Assistant, ## ⚙️ System)
+                const roleMatch = line.match(/^##\s*(?:[👤🤖⚙️📝]\s*)?(.+)$/i);
+                if (roleMatch) {
+                    // Save previous message if we have one
+                    if (currentRole && currentContent.trim()) {
+                        messages.push({
+                            role: currentRole,
+                            content: currentContent.trim(),
+                            timestamp: new Date().toISOString()
+                        });
+                    }
+                    
+                    // Determine new role
+                    const roleText = roleMatch[1].toLowerCase();
+                    if (roleText.includes('user')) {
+                        currentRole = 'user';
+                    } else if (roleText.includes('assistant')) {
+                        currentRole = 'assistant';
+                    } else if (roleText.includes('system')) {
+                        currentRole = 'system';
+                    } else {
+                        currentRole = null; // Skip unknown roles
+                    }
+                    
+                    currentContent = '';
+                    continue;
+                }
+                
+                // Skip metadata lines and separators
+                if (line.startsWith('#') || line.startsWith('**') || 
+                    line.startsWith('---') || line.startsWith('*Exported from') ||
+                    line.includes('Exported:') || line.includes('Model:') || line.includes('Messages:')) {
+                    continue;
+                }
+                
+                // Add content to current message
+                if (currentRole && line) {
+                    currentContent += (currentContent ? '\n' : '') + line;
+                }
+            }
+            
+            // Save last message
+            if (currentRole && currentContent.trim()) {
+                messages.push({
+                    role: currentRole,
+                    content: currentContent.trim(),
+                    timestamp: new Date().toISOString()
+                });
+            }
+            
+            return {
+                conversation: messages,
+                version: '1.0',
+                imported_from: 'markdown'
+            };
+        }
+        
+        function parseTextImport(content) {
+            const messages = [];
+            let currentRole = null;
+            let currentContent = '';
+            
+            const lines = content.split('\n');
+            
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                
+                // Look for role headers [USER], [ASSISTANT], [SYSTEM]
+                const roleMatch = line.match(/^\[([A-Z]+)\]$/);
+                if (roleMatch) {
+                    // Save previous message if we have one
+                    if (currentRole && currentContent.trim()) {
+                        messages.push({
+                            role: currentRole,
+                            content: currentContent.trim(),
+                            timestamp: new Date().toISOString()
+                        });
+                    }
+                    
+                    // Set new role
+                    const roleText = roleMatch[1].toLowerCase();
+                    if (['user', 'assistant', 'system'].includes(roleText)) {
+                        currentRole = roleText;
+                    } else {
+                        currentRole = null; // Skip unknown roles
+                    }
+                    
+                    currentContent = '';
+                    continue;
+                }
+                
+                // Skip header lines, separators, and dashes
+                if (line.startsWith('GPUStack Conversation') || 
+                    line.startsWith('===========') || 
+                    line.startsWith('-----------') ||
+                    line.startsWith('Exported:') || line.startsWith('Model:') || 
+                    line.startsWith('Messages:') || line.startsWith('Exported from')) {
+                    continue;
+                }
+                
+                // Add content to current message
+                if (currentRole && line) {
+                    currentContent += (currentContent ? '\n' : '') + line;
+                }
+            }
+            
+            // Save last message
+            if (currentRole && currentContent.trim()) {
+                messages.push({
+                    role: currentRole,
+                    content: currentContent.trim(),
+                    timestamp: new Date().toISOString()
+                });
+            }
+            
+            return {
+                conversation: messages,
+                version: '1.0',
+                imported_from: 'text'
+            };
         }
         
         // Initialize theme when page loads
