@@ -110,11 +110,15 @@ Write in a clear, informative style that provides substantial value beyond just 
             json={
                 "model": "qwen3",  # Default model
                 "messages": [
-                    {"role": "system", "content": "You are a helpful assistant that summarizes web search results clearly and concisely."},
+                    {"role": "system", "content": "You are a helpful assistant that summarizes web search results clearly and concisely. Provide varied, informative content without repetition."},
                     {"role": "user", "content": prompt}
                 ],
                 "max_tokens": 1200,  # Increased for comprehensive summaries with sources
-                "temperature": 0.2,  # Lower temperature for more factual responses
+                "temperature": 0.3,  # Slightly higher temperature for more variety
+                "repetition_penalty": 1.1,  # Penalty for token repetition
+                "frequency_penalty": 0.3,  # Reduce frequency of repeated tokens
+                "presence_penalty": 0.1,   # Encourage new topics
+                "top_p": 0.9,  # Use nucleus sampling
                 "stream": False
             }
         )

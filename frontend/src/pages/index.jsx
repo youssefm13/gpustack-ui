@@ -21,7 +21,15 @@ export default function Home() {
   };
 
   const handleSubmit = async () => {
-    const res = await axios.post("/api/infer", { messages: [{ role: "user", content: prompt }] });
+    const res = await axios.post("/api/infer", {
+      messages: [{ role: "user", content: prompt }],
+      max_tokens: 2000,
+      temperature: 0.7,
+      repetition_penalty: 1.1,
+      frequency_penalty: 0.3,
+      presence_penalty: 0.1,
+      top_p: 0.9
+    });
     setResponse(res.choices[0].message.content);
   };
 
