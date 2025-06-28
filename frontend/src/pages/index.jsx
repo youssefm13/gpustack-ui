@@ -163,7 +163,7 @@ export default function Home() {
   };
 
   const handleSearch = async () => {
-    if (!prompt.trim()) {
+    if (!(prompt?.trim() || '')) {
       setError('Please enter a search query');
       return;
     }
@@ -183,7 +183,7 @@ export default function Home() {
   };
 
   const handleSubmit = async () => {
-    if (!prompt.trim()) {
+    if (!(prompt?.trim() || '')) {
       setError('Please enter a message');
       return;
     }
@@ -336,14 +336,14 @@ export default function Home() {
                   <div className="flex gap-3">
                     <button
                       onClick={handleSubmit}
-                      disabled={isLoading || !prompt.trim()}
+                      disabled={isLoading || !(prompt?.trim() || '')}
                       className="flex-1 px-4 py-2 rounded-lg font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-400 disabled:text-gray-200 disabled:cursor-not-allowed"
                     >
                       💬 Send Message
                     </button>
                     <button
                       onClick={handleSearch}
-                      disabled={isSearching || !prompt.trim()}
+                      disabled={isSearching || !(prompt?.trim() || '')}
                       className="px-6 py-2 rounded-lg font-medium transition-colors bg-green-600 text-white hover:bg-green-700 disabled:bg-gray-400 disabled:text-gray-200 disabled:cursor-not-allowed"
                     >
                       🌐 Search Web
