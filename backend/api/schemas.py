@@ -59,7 +59,7 @@ class DetailedMetricsResponse(BaseModel):
 # Models API Models
 class ModelItem(BaseModel):
     """Individual model information."""
-    id: str = Field(..., description="Model identifier")
+    id: Union[str, int] = Field(..., description="Model identifier")
     name: str = Field(..., description="Model display name")
     categories: List[str] = Field(..., description="Model categories (e.g., ['llm'])")
     description: Optional[str] = Field(None, description="Model description")
@@ -72,7 +72,7 @@ class ModelsResponse(BaseModel):
 # Inference API Models
 class InferenceRequest(BaseModel):
     """Inference request model."""
-    model: str = Field(..., description="Model ID to use for inference", example="llama-3.1-8b-instruct")
+    model: str = Field(..., description="Model ID to use for inference", example="qwen3")
     messages: List[Dict[str, str]] = Field(
         ..., 
         description="List of messages in chat format",
