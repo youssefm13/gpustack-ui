@@ -41,7 +41,7 @@ export default function Home() {
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [prompt, response]);
+  }, [prompt, response, saveConversation]);
 
   // Load saved conversations on mount
   useEffect(() => {
@@ -83,7 +83,7 @@ export default function Home() {
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [prompt]);
+  }, [handleSubmit, saveConversation, handleSearch]);
 
   const saveConversation = useCallback(() => {
     if (!prompt && !response) return;
@@ -162,7 +162,7 @@ export default function Home() {
     }
   };
 
-  const handleSearch = async () => {
+  const handleSearch = useCallback(async () => {
     if (!(prompt?.trim() || '')) {
       setError('Please enter a search query');
       return;
@@ -180,9 +180,9 @@ export default function Home() {
     } finally {
       setIsSearching(false);
     }
-  };
+  }, [prompt, showSuccessMessage]);
 
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(async () => {
     if (!(prompt?.trim() || '')) {
       setError('Please enter a message');
       return;
@@ -214,7 +214,7 @@ export default function Home() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [prompt, selectedModel, saveConversation, showSuccessMessage]);
 
   const copyToClipboard = async (text) => {
     try {
