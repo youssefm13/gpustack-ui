@@ -5,9 +5,21 @@ import json
 import re
 import asyncio
 
-client = TavilyClient(api_key=TAVILY_API_KEY)
+# Lazy initialization of Tavily client
+_client = None
+
+def get_tavily_client():
+    global _client
+    if _client is None:
+        if not TAVILY_API_KEY:
+            raise ValueError("TAVILY_API_KEY environment variable is not set")
+        _client = TavilyClient(api_key=TAVILY_API_KEY)
+    return _client
 
 async def perform_web_search_async(query: str, http_client: httpx.AsyncClient = None):
+    # Get client lazily
+    client = get_tavily_client()
+    
     # Enhance query for better results
     enhanced_query = enhance_search_query(query)
     

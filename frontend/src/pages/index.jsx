@@ -3,6 +3,11 @@ import axios from "axios";
 import ErrorMessage from "../components/ErrorMessage";
 import SuccessMessage from "../components/SuccessMessage";
 
+// Get backend URL from config
+const getBackendUrl = () => {
+  return window.CONFIG?.BACKEND_URL || 'http://localhost:8001';
+};
+
 export default function Home() {
   const [prompt, setPrompt] = useState("");
   const [response, setResponse] = useState("");
@@ -29,6 +34,19 @@ export default function Home() {
   // Load saved conversations on mount
   useEffect(() => {
     loadSavedConversations();
+    
+    // Test backend connectivity
+    const testBackend = async () => {
+      try {
+        const res = await axios.get(`${getBackendUrl()}/api/health`);
+        console.log('Backend is reachable:', res.data);
+      } catch (err) {
+        console.error('Backend connectivity test failed:', err);
+        setError('Cannot connect to backend server. Please check if the backend is running.');
+      }
+    };
+    
+    testBackend();
   }, []);
 
   // Keyboard shortcuts
@@ -119,7 +137,7 @@ export default function Home() {
       const formData = new FormData();
       formData.append("file", file);
 
-      const res = await axios.post("/api/files/upload", formData);
+      const res = await axios.post(`${getBackendUrl()}/api/files/upload`, formData);
       setFileText(res.data.content);
       
       showSuccessMessage('File uploaded and processed successfully!');
@@ -140,7 +158,7 @@ export default function Home() {
     setError('');
 
     try {
-      const res = await axios.post("/api/tools/search", { q: prompt });
+      const res = await axios.post(`${getBackendUrl()}/api/tools/search`, { q: prompt });
       setPrompt(res.data.result);
       showSuccessMessage('Web search completed!');
     } catch (err) {
@@ -160,7 +178,9 @@ export default function Home() {
     setError('');
 
     try {
-      const res = await axios.post("/api/inference/infer", {
+      console.log('Sending request to:', `${getBackendUrl()}/api/inference/infer`);
+      const res = await axios.post(`${getBackendUrl()}/api/inference/infer`, {
+        model: "qwen3",
         messages: [{ role: "user", content: prompt }],
         max_tokens: 2000,
         temperature: 0.7,
@@ -170,10 +190,12 @@ export default function Home() {
         top_p: 0.9
       });
       
+      console.log('Response received:', res.data);
       setResponse(res.data.choices[0].message.content);
       saveConversation();
       showSuccessMessage('Response received!');
     } catch (err) {
+      console.error('API Error:', err);
       setError(`Request failed: ${err.response?.data?.detail || err.message}`);
     } finally {
       setIsLoading(false);
