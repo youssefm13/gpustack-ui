@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, HTTPException
 from datetime import datetime
 import psutil
 import asyncio
+from api.schemas import HealthResponse, DetailedMetricsResponse, ErrorResponse
 
 router = APIRouter()
 
@@ -23,9 +24,23 @@ async def track_connections_middleware(request: Request, call_next):
     finally:
         active_connections -= 1
 
-@router.get("/health")
-async def health_check():
-    """Health check endpoint with performance metrics"""
+@router.get("/health", response_model=HealthResponse, responses={500: {"model": ErrorResponse}})
+async def health_check(
+    request: Request
+) -> HealthResponse:
+    """
+    Comprehensive health check endpoint.
+    
+    Returns system health status, performance metrics, and resource utilization.
+    This endpoint is used for monitoring service availability and performance.
+    
+    - **status**: Service health status (healthy/degraded/error)
+    - **uptime_seconds**: How long the service has been running
+    - **active_connections**: Current number of active HTTP connections
+    - **total_requests**: Total requests processed since startup
+    - **system**: CPU and memory utilization metrics
+    - **performance**: Request rate and concurrency metrics
+    """
     try:
         # System metrics
         cpu_percent = psutil.cpu_percent(interval=1)
@@ -56,9 +71,22 @@ async def health_check():
             "total_requests": total_requests
         }
 
-@router.get("/metrics")
-async def performance_metrics():
-    """Detailed performance metrics"""
+@router.get("/metrics", response_model=DetailedMetricsResponse, responses={500: {"model": ErrorResponse}})
+async def performance_metrics(
+    request: Request
+) -> DetailedMetricsResponse:
+    """
+    Detailed performance and capacity metrics.
+    
+    Provides comprehensive information about system performance, request handling,
+    and estimated capacity under different usage scenarios.
+    
+    - **concurrent_connections**: Current active connections
+    - **total_requests**: Total requests since startup
+    - **uptime_hours**: Service uptime in hours
+    - **requests_per_hour**: Average request rate
+    - **estimated_capacity**: Capacity estimates for different usage patterns
+    """
     uptime = datetime.now() - start_time
     
     return {

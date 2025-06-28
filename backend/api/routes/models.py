@@ -1,12 +1,24 @@
 from fastapi import APIRouter, HTTPException, Request
 from config import GPUSTACK_API_URL, GPUSTACK_API_KEY
 import httpx
+from api.schemas import ModelsResponse, ErrorResponse
 
 router = APIRouter()
 
-@router.get("", response_model=None)
-async def get_models(request: Request):
-    """Fetch available models from GPUStack server"""
+@router.get("", response_model=ModelsResponse, responses={500: {"model": ErrorResponse}})
+async def get_models(request: Request) -> ModelsResponse:
+    """
+    Retrieve available LLM models from GPUStack server.
+    
+    This endpoint fetches all available language models from the connected GPUStack instance.
+    Only LLM models are returned (filtering out image, embedding, and reranker models).
+    
+    Returns:
+        ModelsResponse: List of available models with their metadata
+        
+    Raises:
+        HTTPException: If the GPUStack server is unreachable or returns an error
+    """
     try:
         # Construct the models endpoint URL
         base_url = GPUSTACK_API_URL.replace('/v1/chat/completions', '')
