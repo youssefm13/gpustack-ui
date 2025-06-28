@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import ErrorMessage from "../components/ErrorMessage";
 import SuccessMessage from "../components/SuccessMessage";
+import ChatBox from "../components/ChatBox";
+import ToolPanel from "../components/ToolPanel";
 
 // Get backend URL from config
 const getBackendUrl = () => {
@@ -19,6 +21,16 @@ export default function Home() {
   const [successMessage, setSuccessMessage] = useState("");
   const [conversations, setConversations] = useState([]);
   const [currentConversation, setCurrentConversation] = useState(null);
+  const [selectedModel, setSelectedModel] = useState("qwen3");
+
+  // Available models
+  const availableModels = [
+    { id: "qwen3", name: "Qwen 3", description: "Fast and efficient model" },
+    { id: "qwen2.5", name: "Qwen 2.5", description: "Balanced performance" },
+    { id: "llama3.1", name: "Llama 3.1", description: "High quality responses" },
+    { id: "gemma2", name: "Gemma 2", description: "Google's latest model" },
+    { id: "mistral", name: "Mistral", description: "Fast and accurate" }
+  ];
 
   // Auto-save conversation every 30 seconds
   useEffect(() => {
@@ -81,6 +93,7 @@ export default function Home() {
       prompt,
       response,
       fileText,
+      model: selectedModel,
       timestamp: new Date().toISOString(),
     };
 
@@ -97,7 +110,7 @@ export default function Home() {
     setCurrentConversation(conversation);
     setConversations(saved);
     showSuccessMessage('Conversation saved successfully!');
-  }, [prompt, response, fileText, currentConversation]);
+  }, [prompt, response, fileText, currentConversation, selectedModel]);
 
   const loadSavedConversations = () => {
     const saved = JSON.parse(localStorage.getItem('gpustack-conversations') || '[]');
@@ -109,6 +122,7 @@ export default function Home() {
     setPrompt(conversation.prompt || '');
     setResponse(conversation.response || '');
     setFileText(conversation.fileText || '');
+    setSelectedModel(conversation.model || 'qwen3');
     setError('');
     showSuccessMessage('Conversation loaded!');
   };
@@ -180,7 +194,7 @@ export default function Home() {
     try {
       console.log('Sending request to:', `${getBackendUrl()}/api/inference/infer`);
       const res = await axios.post(`${getBackendUrl()}/api/inference/infer`, {
-        model: "qwen3",
+        model: selectedModel,
         messages: [{ role: "user", content: prompt }],
         max_tokens: 2000,
         temperature: 0.7,
@@ -212,212 +226,144 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="container mx-auto p-4 max-w-6xl">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-100 dark:from-gray-900 dark:to-gray-800">
+      <div className="flex flex-col min-h-screen">
         {/* Header */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
-          <div className="flex justify-between items-center">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-              GPUStack UI
-            </h1>
-            <div className="flex gap-2">
-              <button
-                onClick={saveConversation}
-                disabled={!prompt && !response}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Save conversation (Ctrl+S)"
-              >
-                💾 Save
-              </button>
-              <button
-                onClick={clearConversation}
-                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
-              >
-                🗑️ Clear
-              </button>
-            </div>
+        <header className="bg-white dark:bg-gray-900 shadow-md py-4 px-8 flex items-center justify-between">
+          <h1 className="text-3xl font-extrabold text-blue-700 dark:text-blue-300 tracking-tight">GPUStack UI</h1>
+          <div className="flex gap-2">
+            <button
+              onClick={saveConversation}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Save conversation (Ctrl+S)"
+              disabled={!prompt && !response}
+            >
+              💾 Save
+            </button>
+            <button
+              onClick={clearConversation}
+              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
+            >
+              🗑️ Clear
+            </button>
           </div>
-          
-          {/* Keyboard shortcuts help */}
-          <div className="mt-4 text-sm text-gray-600 dark:text-gray-400">
-            <span className="mr-4">⌘+Enter: Send</span>
-            <span className="mr-4">⌘+S: Save</span>
-            <span>⌘+Shift+S: Search Web</span>
-          </div>
-        </div>
+        </header>
 
-        {/* Messages */}
-        <div className="mb-6 space-y-4">
-          <ErrorMessage 
-            error={error} 
-            onDismiss={() => setError('')} 
-          />
-          <SuccessMessage 
-            message={successMessage} 
-            onDismiss={() => setSuccessMessage('')} 
-          />
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Conversations Sidebar */}
-          <div className="lg:col-span-1">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-4">
-              <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
-                Saved Conversations
-              </h2>
-              <div className="space-y-2 max-h-96 overflow-y-auto">
-                {conversations.length === 0 ? (
-                  <p className="text-gray-500 dark:text-gray-400 text-sm">
-                    No saved conversations
-                  </p>
-                ) : (
-                  conversations.map((conv) => (
-                    <button
-                      key={conv.id}
-                      onClick={() => loadConversation(conv)}
-                      className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                        currentConversation?.id === conv.id
-                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                          : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
-                      }`}
-                    >
-                      <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                        {conv.prompt || 'Empty conversation'}
-                      </div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
-                        {new Date(conv.timestamp).toLocaleDateString()}
-                      </div>
-                    </button>
-                  ))
-                )}
+        {/* Main Content */}
+        <main className="flex-1 container mx-auto px-4 py-8 max-w-7xl">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            {/* Sidebar: Saved Conversations */}
+            <aside className="lg:col-span-1">
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 mb-6 sticky top-8">
+                <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Saved Conversations</h2>
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {conversations.length === 0 ? (
+                    <p className="text-gray-500 dark:text-gray-400 text-sm">No saved conversations</p>
+                  ) : (
+                    conversations.map((c) => (
+                      <button
+                        key={c.id}
+                        onClick={() => loadConversation(c)}
+                        className={`w-full text-left px-3 py-2 rounded-lg transition-colors font-medium ${
+                          currentConversation?.id === c.id
+                            ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200'
+                            : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-800'
+                        }`}
+                      >
+                        <span className="block truncate">{c.prompt?.slice(0, 40) || 'Untitled'}</span>
+                        <span className="block text-xs text-gray-400 dark:text-gray-500">
+                          {c.model ? `${c.model} • ` : ''}{new Date(c.timestamp).toLocaleString()}
+                        </span>
+                      </button>
+                    ))
+                  )}
+                </div>
               </div>
-            </div>
-          </div>
+            </aside>
 
-          {/* Main Chat Area */}
-          <div className="lg:col-span-3 space-y-6">
-            {/* File Upload */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-              <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
-                File Upload
-              </h2>
-              <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center">
-                <input
-                  type="file"
-                  onChange={(e) => handleFileUpload(e.target.files[0])}
-                  disabled={isUploading}
-                  className="hidden"
-                  id="file-upload"
-                  accept=".pdf,.docx,.txt,.jpg,.jpeg,.png"
-                />
-                <label
-                  htmlFor="file-upload"
-                  className={`cursor-pointer inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md ${
-                    isUploading
-                      ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                      : 'bg-blue-600 text-white hover:bg-blue-700'
-                  }`}
-                >
-                  {isUploading ? '📤 Uploading...' : '📁 Choose File'}
-                </label>
-                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                  Supports PDF, DOCX, TXT, and images
-                </p>
-              </div>
-              {fileText && (
-                <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                  <div className="flex justify-between items-center mb-2">
-                    <h3 className="font-medium text-gray-900 dark:text-white">
-                      File Content Preview:
-                    </h3>
-                    <button
-                      onClick={() => copyToClipboard(fileText)}
-                      className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400"
+            {/* Main Chat & Tools */}
+            <section className="lg:col-span-3 space-y-8">
+              {/* File Upload & Tools */}
+              <ToolPanel
+                onFileUpload={handleFileUpload}
+                onSearch={handleSearch}
+                isUploading={isUploading}
+                isSearching={isSearching}
+              />
+
+              {/* Chat Interface */}
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-white">Chat Interface</h2>
+                  <div className="flex items-center gap-3">
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Model:</label>
+                    <select
+                      value={selectedModel}
+                      onChange={(e) => setSelectedModel(e.target.value)}
+                      className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
+                      disabled={isLoading}
                     >
-                      📋 Copy
-                    </button>
-                  </div>
-                  <div className="text-sm text-gray-700 dark:text-gray-300 max-h-32 overflow-y-auto">
-                    {fileText.substring(0, 500)}
-                    {fileText.length > 500 && '...'}
+                      {availableModels.map((model) => (
+                        <option key={model.id} value={model.id}>
+                          {model.name} - {model.description}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
-              )}
-            </div>
-
-            {/* Chat Interface */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-              <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
-                Chat Interface
-              </h2>
-
-              {/* Input Area */}
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Your Message
-                  </label>
-                  <textarea
-                    value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
-                    placeholder="Type your message here... (Ctrl+Enter to send)"
-                    className="w-full h-32 p-4 border border-gray-300 dark:border-gray-600 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    disabled={isLoading}
+                <div className="space-y-6">
+                  <ChatBox
+                    prompt={prompt}
+                    response={response}
+                    timestamp={currentConversation?.timestamp}
+                    isLoading={isLoading}
+                    model={selectedModel}
                   />
-                  <div className="flex justify-between items-center mt-2 text-xs text-gray-500 dark:text-gray-400">
-                    <span>Ctrl+Enter to send</span>
-                    <span>{prompt.length} characters</span>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Your Message</label>
+                    <textarea
+                      placeholder="Type your message here... (Ctrl+Enter to send)"
+                      className="w-full h-32 p-4 border border-gray-300 dark:border-gray-600 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm"
+                      value={prompt}
+                      onChange={(e) => setPrompt(e.target.value)}
+                      disabled={isLoading}
+                    />
+                    <div className="flex justify-between items-center mt-2 text-xs text-gray-500 dark:text-gray-400">
+                      <span>Ctrl+Enter to send</span>
+                      <span>{prompt.length} characters</span>
+                    </div>
                   </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex gap-3">
-                  <button
-                    onClick={handleSubmit}
-                    disabled={isLoading || !prompt.trim()}
-                    className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
-                      isLoading || !prompt.trim()
-                        ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                        : 'bg-blue-600 text-white hover:bg-blue-700'
-                    }`}
-                  >
-                    {isLoading ? '⏳ Processing...' : '💬 Send Message'}
-                  </button>
-                  <button
-                    onClick={handleSearch}
-                    disabled={isSearching || !prompt.trim()}
-                    className={`px-6 py-2 rounded-lg font-medium transition-colors ${
-                      isSearching || !prompt.trim()
-                        ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                        : 'bg-green-600 text-white hover:bg-green-700'
-                    }`}
-                  >
-                    {isSearching ? '🔍 Searching...' : '🌐 Search Web'}
-                  </button>
-                </div>
-              </div>
-
-              {/* Response Area */}
-              {response && (
-                <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                  <div className="flex justify-between items-center mb-2">
-                    <h3 className="font-medium text-gray-900 dark:text-white">
-                      AI Response:
-                    </h3>
+                  <div className="flex gap-3">
                     <button
-                      onClick={() => copyToClipboard(response)}
-                      className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400"
+                      onClick={handleSubmit}
+                      disabled={isLoading || !prompt.trim()}
+                      className="flex-1 px-4 py-2 rounded-lg font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-400 disabled:text-gray-200 disabled:cursor-not-allowed"
                     >
-                      📋 Copy
+                      💬 Send Message
+                    </button>
+                    <button
+                      onClick={handleSearch}
+                      disabled={isSearching || !prompt.trim()}
+                      className="px-6 py-2 rounded-lg font-medium transition-colors bg-green-600 text-white hover:bg-green-700 disabled:bg-gray-400 disabled:text-gray-200 disabled:cursor-not-allowed"
+                    >
+                      🌐 Search Web
                     </button>
                   </div>
-                  <div className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                    {response}
-                  </div>
                 </div>
-              )}
-            </div>
+              </div>
+            </section>
           </div>
+        </main>
+
+        {/* Footer */}
+        <footer className="bg-white dark:bg-gray-900 shadow-inner py-4 px-8 text-center text-gray-400 text-xs mt-8">
+          GPUStack UI &copy; {new Date().getFullYear()} | Powered by FastAPI, Next.js, and Tailwind CSS
+        </footer>
+
+        {/* Error & Success Messages */}
+        <div className="fixed bottom-6 right-6 z-50 space-y-2 w-96 max-w-full">
+          {error && <ErrorMessage message={error} />}
+          {successMessage && <SuccessMessage message={successMessage} />}
         </div>
       </div>
     </div>
