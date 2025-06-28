@@ -32,6 +32,38 @@ export default function Home() {
     { id: "mistral", name: "Mistral", description: "Fast and accurate" }
   ];
 
+  const showSuccessMessage = useCallback((message) => {
+    setSuccessMessage(message);
+    setTimeout(() => setSuccessMessage(''), 3000);
+  }, []);
+
+  const saveConversation = useCallback(() => {
+    if (!prompt && !response) return;
+    
+    const conversation = {
+      id: currentConversation?.id || Date.now(),
+      prompt,
+      response,
+      fileText,
+      model: selectedModel,
+      timestamp: new Date().toISOString(),
+    };
+
+    const saved = JSON.parse(localStorage.getItem('gpustack-conversations') || '[]');
+    const existingIndex = saved.findIndex(c => c.id === conversation.id);
+    
+    if (existingIndex >= 0) {
+      saved[existingIndex] = conversation;
+    } else {
+      saved.push(conversation);
+    }
+
+    localStorage.setItem('gpustack-conversations', JSON.stringify(saved));
+    setCurrentConversation(conversation);
+    setConversations(saved);
+    showSuccessMessage('Conversation saved successfully!');
+  }, [prompt, response, fileText, currentConversation, selectedModel, showSuccessMessage]);
+
   // Auto-save conversation every 30 seconds
   useEffect(() => {
     const interval = setInterval(() => {
@@ -85,33 +117,6 @@ export default function Home() {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [handleSubmit, saveConversation, handleSearch]);
 
-  const saveConversation = useCallback(() => {
-    if (!prompt && !response) return;
-    
-    const conversation = {
-      id: currentConversation?.id || Date.now(),
-      prompt,
-      response,
-      fileText,
-      model: selectedModel,
-      timestamp: new Date().toISOString(),
-    };
-
-    const saved = JSON.parse(localStorage.getItem('gpustack-conversations') || '[]');
-    const existingIndex = saved.findIndex(c => c.id === conversation.id);
-    
-    if (existingIndex >= 0) {
-      saved[existingIndex] = conversation;
-    } else {
-      saved.push(conversation);
-    }
-
-    localStorage.setItem('gpustack-conversations', JSON.stringify(saved));
-    setCurrentConversation(conversation);
-    setConversations(saved);
-    showSuccessMessage('Conversation saved successfully!');
-  }, [prompt, response, fileText, currentConversation, selectedModel]);
-
   const loadSavedConversations = () => {
     const saved = JSON.parse(localStorage.getItem('gpustack-conversations') || '[]');
     setConversations(saved);
@@ -134,11 +139,6 @@ export default function Home() {
     setCurrentConversation(null);
     setError('');
     showSuccessMessage('Conversation cleared!');
-  };
-
-  const showSuccessMessage = (message) => {
-    setSuccessMessage(message);
-    setTimeout(() => setSuccessMessage(''), 3000);
   };
 
   const handleFileUpload = async (file) => {
