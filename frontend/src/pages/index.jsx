@@ -22,24 +22,54 @@ export default function Home() {
   const [conversations, setConversations] = useState([]);
   const [currentConversation, setCurrentConversation] = useState(null);
   const [selectedModel, setSelectedModel] = useState("qwen3");
+  const [availableModels, setAvailableModels] = useState([]);
+  const [isLoadingModels, setIsLoadingModels] = useState(true);
 
-  // Available models
-  const availableModels = [
-    { id: "qwen3", name: "Qwen 3", description: "Fast and efficient model" },
-    { id: "qwen2.5", name: "Qwen 2.5", description: "Balanced performance" },
-    { id: "llama3.1", name: "Llama 3.1", description: "High quality responses" },
-    { id: "gemma2", name: "Gemma 2", description: "Google's latest model" },
-    { id: "mistral", name: "Mistral", description: "Fast and accurate" }
-  ];
+  const showSuccessMessage = useCallback((msg) => {
+    setSuccessMessage(msg);
+    setTimeout(() => setSuccessMessage(""), 2500);
+  }, []);
 
-  const showSuccessMessage = useCallback((message) => {
-    setSuccessMessage(message);
-    setTimeout(() => setSuccessMessage(''), 3000);
+  const loadModels = useCallback(async () => {
+    try {
+      setIsLoadingModels(true);
+      const res = await axios.get(`${getBackendUrl()}/api/models`);
+      const models = res.data.models || [];
+      
+      // Transform the models to match our frontend format
+      const transformedModels = models.map(model => ({
+        id: model.name,
+        name: model.name.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        description: model.description || `${model.name} model`,
+        ready: model.ready_replicas > 0,
+        params: model.meta?.n_params ? `${(model.meta.n_params / 1e9).toFixed(1)}B` : null
+      }));
+      
+      setAvailableModels(transformedModels);
+      
+      // Set default model to first available ready model, or first model if none ready
+      if (transformedModels.length > 0) {
+        const readyModel = transformedModels.find(m => m.ready);
+        const defaultModel = readyModel || transformedModels[0];
+        setSelectedModel(defaultModel.id);
+      }
+    } catch (err) {
+      console.error('Failed to load models:', err);
+      // Fallback to hardcoded models if API fails
+      setAvailableModels([
+        { id: "qwen3", name: "Qwen 3", description: "Fast and efficient model", ready: true },
+        { id: "qwen2.5", name: "Qwen 2.5", description: "Previous generation Qwen", ready: true },
+        { id: "llama3.1", name: "Llama 3.1", description: "Meta's Llama 3.1 model", ready: true },
+        { id: "gemma2", name: "Gemma 2", description: "Google's Gemma 2 model", ready: true },
+        { id: "mistral", name: "Mistral", description: "Mistral AI model", ready: true },
+      ]);
+    } finally {
+      setIsLoadingModels(false);
+    }
   }, []);
 
   const saveConversation = useCallback(() => {
     if (!prompt && !response) return;
-    
     const conversation = {
       id: currentConversation?.id || Date.now(),
       prompt,
@@ -48,21 +78,62 @@ export default function Home() {
       model: selectedModel,
       timestamp: new Date().toISOString(),
     };
+    let updatedConversations = conversations.filter((c) => c.id !== conversation.id);
+    updatedConversations = [conversation, ...updatedConversations];
+    setConversations(updatedConversations);
+    localStorage.setItem('gpustack-conversations', JSON.stringify(updatedConversations));
+  }, [prompt, response, fileText, selectedModel, currentConversation, conversations]);
 
-    const saved = JSON.parse(localStorage.getItem('gpustack-conversations') || '[]');
-    const existingIndex = saved.findIndex(c => c.id === conversation.id);
-    
-    if (existingIndex >= 0) {
-      saved[existingIndex] = conversation;
-    } else {
-      saved.push(conversation);
+  const handleSubmit = useCallback(async () => {
+    if (!(prompt?.trim() || '')) {
+      setError('Please enter a message');
+      return;
     }
+    setIsLoading(true);
+    setError('');
+    try {
+      const res = await axios.post(`${getBackendUrl()}/api/inference/infer`, {
+        model: selectedModel,
+        messages: [{ role: "user", content: prompt }],
+        max_tokens: 2000,
+        temperature: 0.7,
+        repetition_penalty: 1.1,
+        frequency_penalty: 0.3,
+        presence_penalty: 0.1,
+        top_p: 0.9
+      });
+      setResponse(res.data.choices[0].message.content);
+      saveConversation();
+      showSuccessMessage('Response received!');
+    } catch (err) {
+      setError(`Inference failed: ${err.response?.data?.detail || err.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [prompt, selectedModel, saveConversation, showSuccessMessage]);
 
-    localStorage.setItem('gpustack-conversations', JSON.stringify(saved));
-    setCurrentConversation(conversation);
-    setConversations(saved);
-    showSuccessMessage('Conversation saved successfully!');
-  }, [prompt, response, fileText, currentConversation, selectedModel, showSuccessMessage]);
+  const handleSearch = useCallback(async () => {
+    if (!(prompt?.trim() || '')) {
+      setError('Please enter a search query');
+      return;
+    }
+    setIsSearching(true);
+    setError('');
+    try {
+      const res = await axios.post(`${getBackendUrl()}/api/tools/search`, { q: prompt });
+      setPrompt(res.data.result);
+      showSuccessMessage('Web search completed!');
+    } catch (err) {
+      setError(`Search failed: ${err.response?.data?.detail || err.message}`);
+    } finally {
+      setIsSearching(false);
+    }
+  }, [prompt, showSuccessMessage]);
+
+  // Load models on mount
+  useEffect(() => {
+    loadModels();
+  }, [loadModels]);
 
   // Auto-save conversation every 30 seconds
   useEffect(() => {
@@ -71,7 +142,6 @@ export default function Home() {
         saveConversation();
       }
     }, 30000);
-
     return () => clearInterval(interval);
   }, [prompt, response, saveConversation]);
 
@@ -162,60 +232,6 @@ export default function Home() {
     }
   };
 
-  const handleSearch = useCallback(async () => {
-    if (!(prompt?.trim() || '')) {
-      setError('Please enter a search query');
-      return;
-    }
-
-    setIsSearching(true);
-    setError('');
-
-    try {
-      const res = await axios.post(`${getBackendUrl()}/api/tools/search`, { q: prompt });
-      setPrompt(res.data.result);
-      showSuccessMessage('Web search completed!');
-    } catch (err) {
-      setError(`Search failed: ${err.response?.data?.detail || err.message}`);
-    } finally {
-      setIsSearching(false);
-    }
-  }, [prompt, showSuccessMessage]);
-
-  const handleSubmit = useCallback(async () => {
-    if (!(prompt?.trim() || '')) {
-      setError('Please enter a message');
-      return;
-    }
-
-    setIsLoading(true);
-    setError('');
-
-    try {
-      console.log('Sending request to:', `${getBackendUrl()}/api/inference/infer`);
-      const res = await axios.post(`${getBackendUrl()}/api/inference/infer`, {
-        model: selectedModel,
-        messages: [{ role: "user", content: prompt }],
-        max_tokens: 2000,
-        temperature: 0.7,
-        repetition_penalty: 1.1,
-        frequency_penalty: 0.3,
-        presence_penalty: 0.1,
-        top_p: 0.9
-      });
-      
-      console.log('Response received:', res.data);
-      setResponse(res.data.choices[0].message.content);
-      saveConversation();
-      showSuccessMessage('Response received!');
-    } catch (err) {
-      console.error('API Error:', err);
-      setError(`Request failed: ${err.response?.data?.detail || err.message}`);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [prompt, selectedModel, saveConversation, showSuccessMessage]);
-
   const copyToClipboard = async (text) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -297,18 +313,23 @@ export default function Home() {
                   <h2 className="text-xl font-bold text-gray-900 dark:text-white">Chat Interface</h2>
                   <div className="flex items-center gap-3">
                     <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Model:</label>
-                    <select
-                      value={selectedModel}
-                      onChange={(e) => setSelectedModel(e.target.value)}
-                      className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm"
-                      disabled={isLoading}
-                    >
-                      {availableModels.map((model) => (
-                        <option key={model.id} value={model.id}>
-                          {model.name} - {model.description}
-                        </option>
-                      ))}
-                    </select>
+                    {isLoadingModels ? (
+                      <div className="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
+                        Loading models...
+                      </div>
+                    ) : (
+                      <select
+                        value={selectedModel}
+                        onChange={(e) => setSelectedModel(e.target.value)}
+                        className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        {availableModels.map((model) => (
+                          <option key={model.id} value={model.id}>
+                            {model.name} {model.params && `(${model.params})`} {!model.ready && '(Not Ready)'}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                 </div>
                 <div className="space-y-6">

@@ -22,7 +22,12 @@ export default function ChatBox({ prompt, response, timestamp, isLoading = false
           <div className="hidden sm:block w-8 h-8 rounded-full bg-gray-300 dark:bg-gray-700 flex items-center justify-center text-gray-700 dark:text-gray-200 font-bold">🤖</div>
           <div className="max-w-2xl bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-2xl p-4 shadow-md relative">
             <div className="text-xs font-semibold mb-1 text-gray-600 dark:text-gray-400 opacity-80">
-              AI Assistant ({model})
+              {model === "qwen3" ? "Qwen 3" : 
+               model === "qwen2.5" ? "Qwen 2.5" : 
+               model === "llama3.1" ? "Llama 3.1" : 
+               model === "gemma2" ? "Gemma 2" : 
+               model === "mistral" ? "Mistral" : 
+               model.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
             </div>
             <div className="whitespace-pre-wrap break-words text-base">{response}</div>
             {timestamp && (
@@ -39,7 +44,14 @@ export default function ChatBox({ prompt, response, timestamp, isLoading = false
           <div className="hidden sm:block w-8 h-8 rounded-full bg-gray-300 dark:bg-gray-700 flex items-center justify-center text-gray-700 dark:text-gray-200 font-bold">🤖</div>
           <div className="max-w-2xl bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-2xl p-4 shadow-md flex items-center gap-2">
             <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></span>
-            <span className="text-gray-600 dark:text-gray-400">Thinking with {model}...</span>
+            <span className="text-gray-600 dark:text-gray-400">
+              Thinking with {model === "qwen3" ? "Qwen 3" : 
+                           model === "qwen2.5" ? "Qwen 2.5" : 
+                           model === "llama3.1" ? "Llama 3.1" : 
+                           model === "gemma2" ? "Gemma 2" : 
+                           model === "mistral" ? "Mistral" : 
+                           model.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}...
+            </span>
           </div>
         </div>
       )}
