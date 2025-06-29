@@ -1,5 +1,5 @@
-from fastapi import APIRouter, HTTPException, Request
-from config import GPUSTACK_API_URL, GPUSTACK_API_KEY
+from fastapi import APIRouter, Depends, HTTPException, Request
+from config.settings import settings
 import httpx
 from api.schemas import ModelsResponse, ErrorResponse
 
@@ -21,15 +21,14 @@ async def get_models(request: Request) -> ModelsResponse:
     """
     try:
         # Construct the models endpoint URL
-        base_url = GPUSTACK_API_URL.replace('/v1/chat/completions', '')
-        models_url = f"{base_url}/v1/models"
+        models_url = f"{settings.gpustack_api_base}/v1/models"
         
         headers = {
             "Content-Type": "application/json"
         }
         
-        if GPUSTACK_API_KEY:
-            headers["Authorization"] = f"Bearer {GPUSTACK_API_KEY}"
+        if settings.gpustack_api_token:
+            headers["Authorization"] = f"Bearer {settings.gpustack_api_token}"
         
         # Use direct HTTP client for now (debugging)
         async with httpx.AsyncClient(timeout=30.0) as http_client:

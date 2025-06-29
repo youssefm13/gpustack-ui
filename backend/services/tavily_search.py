@@ -1,11 +1,11 @@
 from tavily import TavilyClient
-from config import TAVILY_API_KEY, GPUSTACK_API_URL, GPUSTACK_API_KEY
+from config.settings import settings
 import httpx
 import json
 import re
 import asyncio
 
-client = TavilyClient(api_key=TAVILY_API_KEY)
+client = TavilyClient(api_key=settings.tavily_api_key)
 
 async def perform_web_search_async(query: str, http_client: httpx.AsyncClient = None):
     # Enhance query for better results
@@ -102,9 +102,9 @@ Write in a clear, informative style that provides substantial value beyond just 
         
         # Send async request to GPUStack
         response = await client.post(
-            GPUSTACK_API_URL,
+            f"{settings.gpustack_api_base}/v1/chat/completions",
             headers={
-                "Authorization": f"Bearer {GPUSTACK_API_KEY}",
+                "Authorization": f"Bearer {settings.gpustack_api_token or ''}",
                 "Content-Type": "application/json"
             },
             json={

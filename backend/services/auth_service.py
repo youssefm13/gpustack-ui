@@ -10,6 +10,7 @@ from typing import Optional, Dict, Any
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi import HTTPException, status
+from config.settings import settings
 
 from models.user import (
     User, UserLogin, UserResponse, TokenData, TokenResponse, 
@@ -21,21 +22,14 @@ class AuthService:
     """Authentication service with GPUStack integration."""
     
     def __init__(self):
-        self.secret_key = os.getenv("JWT_SECRET_KEY", "your-super-secret-jwt-key-change-in-production")
-        self.algorithm = "HS256"
-        self.access_token_expire_minutes = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
-        self.refresh_token_expire_days = int(os.getenv("JWT_REFRESH_TOKEN_EXPIRE_DAYS", "7"))
+        self.secret_key = settings.jwt_secret_key
+        self.algorithm = settings.jwt_algorithm
+        self.access_token_expire_minutes = settings.access_token_expire_minutes
+        self.refresh_token_expire_days = settings.refresh_token_expire_days
         
         # GPUStack configuration
-        gpustack_url = os.getenv("GPUSTACK_API_URL", "http://192.168.1.231/v1")
-        # Extract base URL from chat completions URL if needed
-        if "/chat/completions" in gpustack_url:
-            self.gpustack_base_url = gpustack_url.replace("/v1/chat/completions", "")
-        elif "/v1" in gpustack_url:
-            self.gpustack_base_url = gpustack_url.replace("/v1", "")
-        else:
-            self.gpustack_base_url = gpustack_url
-        self.gpustack_api_key = os.getenv("GPUSTACK_API_KEY")
+        self.gpustack_base_url = settings.gpustack_api_base
+        self.gpustack_api_key = settings.gpustack_api_token
         
         # Password hashing
         self.pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

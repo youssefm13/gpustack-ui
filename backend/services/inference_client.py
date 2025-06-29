@@ -1,18 +1,18 @@
 import httpx
 import json
-from config import GPUSTACK_API_URL, GPUSTACK_API_KEY
-
+from config.settings import settings
+from typing import Dict, Any, AsyncGenerator
 async def send_to_gpustack(data):
     headers = {
         "Content-Type": "application/json"
     }
     
-    if GPUSTACK_API_KEY:
-        headers["Authorization"] = f"Bearer {GPUSTACK_API_KEY}"
+    if settings.gpustack_api_token:
+        headers["Authorization"] = f"Bearer {settings.gpustack_api_token}"
     
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
-            res = await client.post(GPUSTACK_API_URL, json=data, headers=headers)
+            res = await client.post(f"{settings.gpustack_api_base}/v1/chat/completions", json=data, headers=headers)
             
             print(f"GPUStack status code: {res.status_code}")
             
@@ -34,12 +34,12 @@ async def stream_from_gpustack(data):
         "Accept": "text/event-stream"
     }
     
-    if GPUSTACK_API_KEY:
-        headers["Authorization"] = f"Bearer {GPUSTACK_API_KEY}"
+    if settings.gpustack_api_token:
+        headers["Authorization"] = f"Bearer {settings.gpustack_api_token}"
     
     try:
         async with httpx.AsyncClient(timeout=120.0) as client:
-            async with client.stream('POST', GPUSTACK_API_URL, json=data, headers=headers) as response:
+            async with client.stream('POST', f"{settings.gpustack_api_base}/v1/chat/completions", json=data, headers=headers) as response:
                 
                 print(f"GPUStack streaming status code: {response.status_code}")
                 

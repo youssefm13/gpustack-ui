@@ -10,6 +10,7 @@ psutil
 python-jose[cryptography]
 passlib[bcrypt]
 python-dotenv
+pydantic-settings
 
 # Testing dependencies
 pytest
