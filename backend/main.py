@@ -48,7 +48,7 @@ app = FastAPI(
     ## Error Handling
     All endpoints return structured error responses with appropriate HTTP status codes.
     """,
-    version="2.1.0-dev",
+    version="2.2.0-dev",
     contact={
         "name": "GPUStack UI Team",
         "url": "https://github.com/youssefm13/gpustack-ui",
