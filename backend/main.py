@@ -1,7 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from contextlib import asynccontextmanager
 import httpx
+import os
 from api.routes import files, tools, inference, models, health, auth
 from api.routes.health import track_connections_middleware
 from middleware.auth import JWTMiddleware
@@ -105,6 +108,38 @@ app.include_router(models.router, prefix="/api/models", tags=["models"])
 app.include_router(health.router, prefix="/api", tags=["health"])
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 
+# Static file serving for frontend
+frontend_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "public")
+if os.path.exists(frontend_dir):
+    app.mount("/static", StaticFiles(directory=frontend_dir), name="static")
+
+@app.get("/app", include_in_schema=False)
+def serve_frontend():
+    """
+    Serve the frontend HTML interface.
+    """
+    frontend_file = os.path.join(frontend_dir, "index.html")
+    if os.path.exists(frontend_file):
+        return FileResponse(frontend_file)
+    else:
+        return {"error": "Frontend not found"}
+
+@app.get("/config.js", include_in_schema=False)
+def serve_config():
+    """
+    Serve the frontend configuration file.
+    """
+    config_file = os.path.join(frontend_dir, "config.js")
+    if os.path.exists(config_file):
+        return FileResponse(config_file, media_type="application/javascript")
+    else:
+        # Return a default config if file doesn't exist
+        from fastapi.responses import Response
+        return Response(
+            content="window.CONFIG = { BACKEND_URL: 'http://localhost:8001' };",
+            media_type="application/javascript"
+        )
+
 @app.get("/", response_model=schemas.RootResponse, tags=["root"])
 def read_root() -> schemas.RootResponse:
     """
@@ -112,6 +147,7 @@ def read_root() -> schemas.RootResponse:
     
     Returns basic information about the API service status.
     Visit /docs for interactive API documentation.
+    Visit /app for the web interface.
     """
-    return {"message": "GPUStack UI Backend Running"}
+    return {"message": "GPUStack UI Backend Running - Visit /app for the web interface"}
 
