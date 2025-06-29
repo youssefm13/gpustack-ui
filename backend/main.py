@@ -2,8 +2,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import httpx
-from api.routes import files, tools, inference, models, health
+from api.routes import files, tools, inference, models, health, auth
 from api.routes.health import track_connections_middleware
+from middleware.auth import JWTMiddleware
 from api import schemas
 
 @asynccontextmanager
@@ -73,6 +74,10 @@ app = FastAPI(
         {
             "name": "files",
             "description": "File upload and processing endpoints"
+        },
+        {
+            "name": "auth",
+            "description": "Authentication endpoints for user login and session management"
         }
     ],
     lifespan=lifespan
@@ -90,11 +95,15 @@ app.add_middleware(
 # Add connection tracking middleware
 app.middleware("http")(track_connections_middleware)
 
+# Add JWT middleware
+app.add_middleware(JWTMiddleware)
+
 app.include_router(files.router, prefix="/api/files", tags=["files"])
 app.include_router(tools.router, prefix="/api/tools", tags=["tools"])
 app.include_router(inference.router, prefix="/api/inference", tags=["inference"])
 app.include_router(models.router, prefix="/api/models", tags=["models"])
 app.include_router(health.router, prefix="/api", tags=["health"])
+app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 
 @app.get("/", response_model=schemas.RootResponse, tags=["root"])
 def read_root() -> schemas.RootResponse:

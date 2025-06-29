@@ -7,4 +7,7 @@ python-docx
 Pillow
 tavily-python
 psutil
+python-jose[cryptography]
+passlib[bcrypt]
+python-dotenv
 

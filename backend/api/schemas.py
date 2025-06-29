@@ -5,7 +5,7 @@ This module contains Pydantic models that define the structure of API requests a
 These models are used for automatic OpenAPI documentation generation and request validation.
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional, Dict, Any, Union
 from datetime import datetime
 
@@ -97,6 +97,8 @@ class InferenceChoice(BaseModel):
 
 class InferenceUsage(BaseModel):
     """Token usage information."""
+    model_config = ConfigDict(extra="allow")  # Allow additional fields from GPUStack
+    
     prompt_tokens: int = Field(..., description="Tokens in the prompt")
     completion_tokens: int = Field(..., description="Tokens in the completion")
     total_tokens: int = Field(..., description="Total tokens used")
@@ -115,9 +117,26 @@ class SearchRequest(BaseModel):
     """Web search request model."""
     q: str = Field(..., description="Search query", example="latest developments in AI")
 
+class SearchResult(BaseModel):
+    """Individual search result."""
+    title: str = Field(..., description="Result title")
+    url: str = Field(..., description="Result URL")
+    content: str = Field(..., description="Result content")
+    score: float = Field(..., description="Relevance score")
+    published_date: str = Field(..., description="Publication date")
+    index: int = Field(..., description="Result index")
+
+class SearchResultData(BaseModel):
+    """Search result data structure."""
+    query: str = Field(..., description="Original search query")
+    results: List[SearchResult] = Field(..., description="List of search results")
+    llm_summary: Optional[str] = Field(None, description="LLM-processed summary")
+    processing_status: Optional[str] = Field(None, description="Processing status")
+    processing_error: Optional[str] = Field(None, description="Processing error if any")
+
 class SearchResponse(BaseModel):
     """Web search response model."""
-    result: str = Field(..., description="AI-processed search results with sources")
+    result: SearchResultData = Field(..., description="Search results with AI-processed summary")
 
 # File Upload Models
 class FileMetadata(BaseModel):
