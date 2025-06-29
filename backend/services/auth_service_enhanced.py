@@ -71,7 +71,7 @@ class EnhancedAuthService:
             jti=jti,
             token_type="access",
             expires_at=expire,
-            ip_address=getattr(request, 'client', {}).get('host') if request else None,
+            ip_address=getattr(request.client, 'host', None) if request and hasattr(request, 'client') else None,
             user_agent=request.headers.get('user-agent') if request else None
         )
         
@@ -105,7 +105,7 @@ class EnhancedAuthService:
             jti=jti,
             token_type="refresh",
             expires_at=expire,
-            ip_address=getattr(request, 'client', {}).get('host') if request else None,
+            ip_address=getattr(request.client, 'host', None) if request and hasattr(request, 'client') else None,
             user_agent=request.headers.get('user-agent') if request else None
         )
         

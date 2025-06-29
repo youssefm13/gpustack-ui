@@ -6,12 +6,22 @@ from contextlib import asynccontextmanager
 import httpx
 import os
 from api.routes import files, tools, inference, models, health, auth
+from api.routes import auth_enhanced
 from api.routes.health import track_connections_middleware
 from middleware.auth import JWTMiddleware
+from middleware.auth_enhanced import EnhancedJWTMiddleware
+from database.connection import initialize_database, close_database
 from api import schemas
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Initialize database
+    try:
+        await initialize_database()
+        print("✅ Database initialized")
+    except Exception as e:
+        print(f"⚠️  Database initialization warning: {e}")
+    
     # Create shared HTTP client with connection pooling
     app.state.http_client = httpx.AsyncClient(
         limits=httpx.Limits(
@@ -22,9 +32,13 @@ async def lifespan(app: FastAPI):
         timeout=httpx.Timeout(30.0, connect=10.0)
     )
     print("✅ HTTP client pool initialized")
+    
     yield
+    
+    # Cleanup
     await app.state.http_client.aclose()
-    print("🔌 HTTP client pool closed")
+    await close_database()
+    print("🔌 HTTP client pool and database connections closed")
 
 app = FastAPI(
     title="GPUStack UI Backend API",
@@ -107,6 +121,7 @@ app.include_router(inference.router, prefix="/api/inference", tags=["inference"]
 app.include_router(models.router, prefix="/api/models", tags=["models"])
 app.include_router(health.router, prefix="/api", tags=["health"])
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
+app.include_router(auth_enhanced.router, prefix="/api/auth/v2", tags=["Enhanced Authentication"])
 
 # Static file serving for frontend
 # In Docker, the frontend is copied to /app/frontend

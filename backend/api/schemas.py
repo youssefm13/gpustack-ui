@@ -185,6 +185,46 @@ class LegacyFileUploadResponse(BaseModel):
     """Legacy file upload response for backward compatibility."""
     content: str = Field(..., description="Processed file content")
 
+# Enhanced Authentication Models
+class UserCreateRequest(BaseModel):
+    """Request model for creating a new user."""
+    username: str = Field(..., description="Username for the new user", min_length=3, max_length=255)
+    password: str = Field(..., description="Password for the new user", min_length=6)
+    email: Optional[str] = Field(None, description="Email address", max_length=255)
+    full_name: Optional[str] = Field(None, description="Full name", max_length=255)
+    is_admin: bool = Field(False, description="Whether the user should have admin privileges")
+
+class UserUpdateRequest(BaseModel):
+    """Request model for updating a user."""
+    email: Optional[str] = Field(None, description="Email address", max_length=255)
+    full_name: Optional[str] = Field(None, description="Full name", max_length=255)
+    is_admin: Optional[bool] = Field(None, description="Whether the user should have admin privileges")
+    is_active: Optional[bool] = Field(None, description="Whether the user is active")
+
+class SessionResponse(BaseModel):
+    """Response model for user session information."""
+    id: int = Field(..., description="Session ID")
+    user_id: int = Field(..., description="User ID")
+    username: str = Field(..., description="Username")
+    jti: str = Field(..., description="JWT ID")
+    token_type: str = Field(..., description="Token type (access or refresh)")
+    expires_at: datetime = Field(..., description="Session expiration time")
+    created_at: datetime = Field(..., description="Session creation time")
+    last_accessed: datetime = Field(..., description="Last access time")
+    ip_address: Optional[str] = Field(None, description="IP address")
+    user_agent: Optional[str] = Field(None, description="User agent string")
+
+class UserPreferenceRequest(BaseModel):
+    """Request model for setting user preferences."""
+    key: str = Field(..., description="Preference key", max_length=255)
+    value: Any = Field(..., description="Preference value (can be any JSON-serializable type)")
+
+class UserPreferenceResponse(BaseModel):
+    """Response model for user preferences."""
+    key: str = Field(..., description="Preference key")
+    value: Any = Field(..., description="Preference value")
+    updated_at: datetime = Field(..., description="Last updated time")
+
 # Root endpoint model
 class RootResponse(BaseModel):
     """Root endpoint response."""
