@@ -10,7 +10,7 @@
 - **Authentication**: admin/admin login works
 - **Performance Monitoring**: `/api/health` shows live metrics
 - **Stop Button**: Streaming abort works perfectly
-- **Frontend**: Complete UI at http://localhost:3000
+- **Frontend**: http://localhost:8001/app
 - **Backend**: Multi-worker API at http://localhost:8001
 - **Documentation**: Full Swagger at http://localhost:8001/docs
 

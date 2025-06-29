@@ -58,7 +58,7 @@ class Settings(BaseSettings):
     
     # Security
     cors_origins: List[str] = Field(
-        default=["http://localhost:3000", "http://localhost:8080"],
+        default=["http://localhost:8001"],
         env="CORS_ORIGINS"
     )
     allowed_hosts: List[str] = Field(

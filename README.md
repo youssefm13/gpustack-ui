@@ -1,6 +1,6 @@
-# GPUStack UI v2.0.0
+# GPUStack UI v2.2.0-dev
 
-An enhanced AI chat interface for GPUStack with advanced file processing and multi-format conversation export capabilities.
+A modern, production-ready AI chat interface for GPUStack with advanced authentication, performance monitoring, and intelligent file processing.
 
 ## ✨ Features
 
@@ -56,17 +56,20 @@ For detailed deployment instructions, troubleshooting, and advanced configuratio
 
 ## ⚙️ Configuration
 
-### Environment Variables
-Configure in `.env` file:
+### Environment Configuration
+Optional `.env` file configuration (API keys managed via settings system):
 ```env
-# Required: Your GPUStack server
-GPUSTACK_API_URL=http://YOUR_GPUSTACK_IP:8000/v1/chat/completions
+# Environment
+ENV=development
 
-# Optional: For web search functionality
-TAVILY_API_KEY=your-tavily-api-key
+# JWT Authentication (optional)
+JWT_SECRET_KEY=your-secret-key
 
-# Optional: If GPUStack requires authentication
-GPUSTACK_API_KEY=your-gpustack-key
+# Backend Configuration
+BACKEND_PORT=8001
+WORKERS=3
+
+# Note: GPUStack and Tavily APIs are configured via the backend settings system
 ```
 
 ### Frontend Configuration

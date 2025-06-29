@@ -19,7 +19,7 @@
 
 ### **🚀 Deployment Status**
 - **Backend**: Running on http://localhost:8001
-- **Frontend**: Running on http://localhost:3000
+- **Frontend**: Served at http://localhost:8001/app
 - **Docker Setup**: Multi-worker backend (3 Uvicorn workers)
 - **Performance**: Monitoring active and functional
 - **Authentication**: JWT system fully operational
@@ -161,7 +161,7 @@ docker-compose up -d
 docker-compose logs backend --tail=20
 
 # Access applications
-# Frontend: http://localhost:3000
+# Frontend: http://localhost:8001/app
 # Backend API: http://localhost:8001
 # API Docs: http://localhost:8001/docs
 ```
@@ -306,7 +306,7 @@ The current v2.1.0 release successfully demonstrates:
 2. **Check git status**: `git status && git log --oneline -n 3`
 3. **Verify services**: `docker-compose ps`
 4. **Test health**: `curl http://localhost:8001/api/health`
-5. **Open frontend**: Visit http://localhost:3000
+5. **Open frontend**: Visit http://localhost:8001/app
 6. **Login test**: Use admin/admin credentials
 7. **Review this guide**: Re-read for context
 8. **Continue development**: Pick from next development areas above
