@@ -1,0 +1,300 @@
+INFO:     Started server process [79066]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8001 (Press CTRL+C to quit)
+✅ HTTP client pool initialized
+Streaming inference request: {'model': 'qwen3', 'messages': [{'role': 'user', 'content': 'Hello'}], 'temperature': 0.1, 'max_tokens': 10, 'stream': True, 'top_p': 0.9, 'frequency_penalty': 0.0, 'presence_penalty': 0.0, 'repetition_penalty': 1.1}
+INFO:     127.0.0.1:65082 - "POST /api/inference/stream HTTP/1.1" 200 OK
+GPUStack streaming status code: 200
+INFO:     127.0.0.1:65086 - "POST /api/auth/login HTTP/1.1" 200 OK
+Streaming inference request: {'model': 'qwen3', 'messages': [{'role': 'user', 'content': 'Hello test'}], 'temperature': 0.7, 'max_tokens': 20, 'stream': True, 'top_p': 0.9, 'frequency_penalty': 0.3, 'presence_penalty': 0.1, 'repetition_penalty': 1.1}
+INFO:     127.0.0.1:65091 - "POST /api/inference/stream HTTP/1.1" 200 OK
+GPUStack streaming status code: 200
+Streaming inference request: {'model': 'qwen3-32b-bf16', 'messages': [{'role': 'user', 'content': 'Hello'}], 'temperature': 0.7, 'max_tokens': 10, 'stream': True, 'top_p': 0.9, 'frequency_penalty': 0.0, 'presence_penalty': 0.0, 'repetition_penalty': 1.1}
+INFO:     127.0.0.1:65097 - "POST /api/inference/stream HTTP/1.1" 200 OK
+GPUStack streaming status code: 200
+Streaming inference request: {'model': 'qwen3', 'messages': [{'role': 'user', 'content': 'Test from network'}], 'temperature': 0.7, 'max_tokens': 15, 'stream': True, 'top_p': 0.9, 'frequency_penalty': 0.0, 'presence_penalty': 0.0, 'repetition_penalty': 1.1}
+INFO:     192.168.1.253:65101 - "POST /api/inference/stream HTTP/1.1" 200 OK
+GPUStack streaming status code: 200
+Streaming inference request: {'model': 'nonexistent-model', 'messages': [{'role': 'user', 'content': 'Test'}], 'temperature': 0.7, 'max_tokens': 10, 'stream': True, 'top_p': 0.9, 'frequency_penalty': 0.0, 'presence_penalty': 0.0, 'repetition_penalty': 1.1}
+INFO:     127.0.0.1:65106 - "POST /api/inference/stream HTTP/1.1" 200 OK
+ERROR:    Exception in ASGI application
+  + Exception Group Traceback (most recent call last):
+  |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/_utils.py", line 76, in collapse_excgroups
+  |     yield
+  |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/responses.py", line 263, in __call__
+  |     async with anyio.create_task_group() as task_group:
+  |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 772, in __aexit__
+  |     raise BaseExceptionGroup(
+  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 403, in run_asgi
+    |     result = await app(  # type: ignore[func-returns-value]
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+    |     return await self.app(scope, receive, send)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/fastapi/applications.py", line 1054, in __call__
+    |     await super().__call__(scope, receive, send)
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/applications.py", line 112, in __call__
+    |     await self.middleware_stack(scope, receive, send)
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/middleware/errors.py", line 187, in __call__
+    |     raise exc
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/middleware/errors.py", line 165, in __call__
+    |     await self.app(scope, receive, _send)
+    |   File "/Users/mahmoudyoussef/gpustack-ui/backend/middleware/auth.py", line 122, in __call__
+    |     await self.app(scope, receive, send)
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/middleware/base.py", line 183, in __call__
+    |     raise app_exc
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/middleware/base.py", line 141, in coro
+    |     await self.app(scope, receive_or_disconnect, send_no_error)
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/middleware/cors.py", line 85, in __call__
+    |     await self.app(scope, receive, send)
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 62, in __call__
+    |     await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    |     raise exc
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    |     await app(scope, receive, sender)
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/routing.py", line 714, in __call__
+    |     await self.middleware_stack(scope, receive, send)
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/routing.py", line 734, in app
+    |     await route.handle(scope, receive, send)
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/routing.py", line 288, in handle
+    |     await self.app(scope, receive, send)
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/routing.py", line 76, in app
+    |     await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    |     raise exc
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    |     await app(scope, receive, sender)
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/routing.py", line 74, in app
+    |     await response(scope, receive, send)
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/responses.py", line 262, in __call__
+    |     with collapse_excgroups():
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/contextlib.py", line 158, in __exit__
+    |     self.gen.throw(value)
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/_utils.py", line 82, in collapse_excgroups
+    |     raise exc
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/responses.py", line 266, in wrap
+    |     await func()
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/responses.py", line 246, in stream_response
+    |     async for chunk in self.body_iterator:
+    |   File "/Users/mahmoudyoussef/gpustack-ui/backend/api/routes/inference.py", line 62, in generate
+    |     async for chunk in stream_from_gpustack(prompt_data):
+    |   File "/Users/mahmoudyoussef/gpustack-ui/backend/services/inference_client.py", line 76, in stream_from_gpustack
+    |     raise Exception(f"GPUStack streaming HTTP error: {e.response.status_code}")
+    | Exception: GPUStack streaming HTTP error: 404
+    +------------------------------------
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 403, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/fastapi/applications.py", line 1054, in __call__
+    await super().__call__(scope, receive, send)
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/applications.py", line 112, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/middleware/errors.py", line 187, in __call__
+    raise exc
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/middleware/errors.py", line 165, in __call__
+    await self.app(scope, receive, _send)
+  File "/Users/mahmoudyoussef/gpustack-ui/backend/middleware/auth.py", line 122, in __call__
+    await self.app(scope, receive, send)
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/middleware/base.py", line 183, in __call__
+    raise app_exc
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/middleware/base.py", line 141, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/middleware/cors.py", line 85, in __call__
+    await self.app(scope, receive, send)
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/routing.py", line 714, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/routing.py", line 734, in app
+    await route.handle(scope, receive, send)
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/routing.py", line 288, in handle
+    await self.app(scope, receive, send)
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/routing.py", line 76, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/routing.py", line 74, in app
+    await response(scope, receive, send)
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/responses.py", line 262, in __call__
+    with collapse_excgroups():
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/_utils.py", line 82, in collapse_excgroups
+    raise exc
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/responses.py", line 266, in wrap
+    await func()
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/responses.py", line 246, in stream_response
+    async for chunk in self.body_iterator:
+  File "/Users/mahmoudyoussef/gpustack-ui/backend/api/routes/inference.py", line 62, in generate
+    async for chunk in stream_from_gpustack(prompt_data):
+  File "/Users/mahmoudyoussef/gpustack-ui/backend/services/inference_client.py", line 76, in stream_from_gpustack
+    raise Exception(f"GPUStack streaming HTTP error: {e.response.status_code}")
+Exception: GPUStack streaming HTTP error: 404
+GPUStack streaming status code: 404
+GPUStack streaming error: b'{"error":{"message":"Model not found","code":404,"type":"NotFound"}}'
+INFO:     127.0.0.1:65123 - "GET /app HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65123 - "GET /config.js HTTP/1.1" 200 OK
+INFO:     192.168.1.253:65127 - "GET / HTTP/1.1" 200 OK
+INFO:     192.168.1.253:65126 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     192.168.1.253:65128 - "GET /api/models HTTP/1.1" 200 OK
+INFO:     192.168.1.253:65128 - "OPTIONS /api/auth/logout HTTP/1.1" 200 OK
+INFO:     192.168.1.253:65126 - "POST /api/auth/logout HTTP/1.1" 200 OK
+INFO:     192.168.1.253:65137 - "OPTIONS /api/auth/login HTTP/1.1" 200 OK
+INFO:     192.168.1.253:65137 - "POST /api/auth/login HTTP/1.1" 200 OK
+Streaming inference request: {'model': 'nonexistent-model', 'messages': [{'role': 'user', 'content': 'Test'}], 'temperature': 0.7, 'max_tokens': 10, 'stream': True, 'top_p': 0.9, 'frequency_penalty': 0.0, 'presence_penalty': 0.0, 'repetition_penalty': 1.1}
+INFO:     127.0.0.1:65153 - "POST /api/inference/stream HTTP/1.1" 200 OK
+ERROR:    Exception in ASGI application
+  + Exception Group Traceback (most recent call last):
+  |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/_utils.py", line 76, in collapse_excgroups
+  |     yield
+  |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/responses.py", line 263, in __call__
+  |     async with anyio.create_task_group() as task_group:
+  |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 772, in __aexit__
+  |     raise BaseExceptionGroup(
+  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 403, in run_asgi
+    |     result = await app(  # type: ignore[func-returns-value]
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+    |     return await self.app(scope, receive, send)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/fastapi/applications.py", line 1054, in __call__
+    |     await super().__call__(scope, receive, send)
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/applications.py", line 112, in __call__
+    |     await self.middleware_stack(scope, receive, send)
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/middleware/errors.py", line 187, in __call__
+    |     raise exc
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/middleware/errors.py", line 165, in __call__
+    |     await self.app(scope, receive, _send)
+    |   File "/Users/mahmoudyoussef/gpustack-ui/backend/middleware/auth.py", line 122, in __call__
+    |     await self.app(scope, receive, send)
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/middleware/base.py", line 183, in __call__
+    |     raise app_exc
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/middleware/base.py", line 141, in coro
+    |     await self.app(scope, receive_or_disconnect, send_no_error)
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/middleware/cors.py", line 85, in __call__
+    |     await self.app(scope, receive, send)
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 62, in __call__
+    |     await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    |     raise exc
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    |     await app(scope, receive, sender)
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/routing.py", line 714, in __call__
+    |     await self.middleware_stack(scope, receive, send)
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/routing.py", line 734, in app
+    |     await route.handle(scope, receive, send)
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/routing.py", line 288, in handle
+    |     await self.app(scope, receive, send)
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/routing.py", line 76, in app
+    |     await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    |     raise exc
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    |     await app(scope, receive, sender)
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/routing.py", line 74, in app
+    |     await response(scope, receive, send)
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/responses.py", line 262, in __call__
+    |     with collapse_excgroups():
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/contextlib.py", line 158, in __exit__
+    |     self.gen.throw(value)
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/_utils.py", line 82, in collapse_excgroups
+    |     raise exc
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/responses.py", line 266, in wrap
+    |     await func()
+    |   File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/responses.py", line 246, in stream_response
+    |     async for chunk in self.body_iterator:
+    |   File "/Users/mahmoudyoussef/gpustack-ui/backend/api/routes/inference.py", line 62, in generate
+    |     async for chunk in stream_from_gpustack(prompt_data):
+    |   File "/Users/mahmoudyoussef/gpustack-ui/backend/services/inference_client.py", line 76, in stream_from_gpustack
+    |     raise Exception(f"GPUStack streaming HTTP error: {e.response.status_code}")
+    | Exception: GPUStack streaming HTTP error: 404
+    +------------------------------------
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/uvicorn/protocols/http/h11_impl.py", line 403, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/fastapi/applications.py", line 1054, in __call__
+    await super().__call__(scope, receive, send)
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/applications.py", line 112, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/middleware/errors.py", line 187, in __call__
+    raise exc
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/middleware/errors.py", line 165, in __call__
+    await self.app(scope, receive, _send)
+  File "/Users/mahmoudyoussef/gpustack-ui/backend/middleware/auth.py", line 122, in __call__
+    await self.app(scope, receive, send)
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/middleware/base.py", line 183, in __call__
+    raise app_exc
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/middleware/base.py", line 141, in coro
+    await self.app(scope, receive_or_disconnect, send_no_error)
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/middleware/cors.py", line 85, in __call__
+    await self.app(scope, receive, send)
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/routing.py", line 714, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/routing.py", line 734, in app
+    await route.handle(scope, receive, send)
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/routing.py", line 288, in handle
+    await self.app(scope, receive, send)
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/routing.py", line 76, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/routing.py", line 74, in app
+    await response(scope, receive, send)
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/responses.py", line 262, in __call__
+    with collapse_excgroups():
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/_utils.py", line 82, in collapse_excgroups
+    raise exc
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/responses.py", line 266, in wrap
+    await func()
+  File "/opt/homebrew/Caskroom/miniconda/base/lib/python3.12/site-packages/starlette/responses.py", line 246, in stream_response
+    async for chunk in self.body_iterator:
+  File "/Users/mahmoudyoussef/gpustack-ui/backend/api/routes/inference.py", line 62, in generate
+    async for chunk in stream_from_gpustack(prompt_data):
+  File "/Users/mahmoudyoussef/gpustack-ui/backend/services/inference_client.py", line 76, in stream_from_gpustack
+    raise Exception(f"GPUStack streaming HTTP error: {e.response.status_code}")
+Exception: GPUStack streaming HTTP error: 404
+GPUStack streaming status code: 404
+GPUStack streaming error: b'{"error":{"message":"Model not found","code":404,"type":"NotFound"}}'
+INFO:     127.0.0.1:65163 - "GET /api/models HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [79066]

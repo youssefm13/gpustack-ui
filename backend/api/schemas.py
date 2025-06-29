@@ -57,13 +57,31 @@ class DetailedMetricsResponse(BaseModel):
     estimated_capacity: EstimatedCapacity = Field(..., description="Estimated user capacity")
 
 # Models API Models
+class ModelMetadata(BaseModel):
+    """Model metadata and capabilities."""
+    n_params: int = Field(..., description="Number of parameters")
+    n_ctx: int = Field(..., description="Context window size")
+    architecture: str = Field(..., description="Model architecture")
+    quantization: str = Field(..., description="Quantization type")
+    precision: str = Field(..., description="Precision type")
+
 class ModelItem(BaseModel):
-    """Individual model information."""
+    """Individual model information with enhanced status and metadata."""
     id: Union[str, int] = Field(..., description="Model identifier")
-    name: str = Field(..., description="Model display name")
+    name: str = Field(..., description="Model name")
     categories: List[str] = Field(..., description="Model categories (e.g., ['llm'])")
     description: Optional[str] = Field(None, description="Model description")
     created_at: Optional[datetime] = Field(None, description="Model creation date")
+    
+    # Enhanced fields
+    status: str = Field(..., description="Model status (ready, loading, error, unknown)")
+    display_name: str = Field(..., description="User-friendly display name")
+    ready_replicas: int = Field(..., description="Number of ready replicas")
+    total_replicas: int = Field(..., description="Total number of replicas")
+    status_description: str = Field(..., description="Detailed status description")
+    last_updated: str = Field(..., description="Last updated timestamp")
+    size_category: str = Field(..., description="Model size category (small, medium, large, etc.)")
+    meta: ModelMetadata = Field(..., description="Model metadata and capabilities")
 
 class ModelsResponse(BaseModel):
     """Response containing available models."""

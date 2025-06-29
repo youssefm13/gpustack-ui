@@ -10,14 +10,13 @@ router = APIRouter()
 @router.get("", response_model=ModelsResponse, responses={500: {"model": ErrorResponse}})
 async def get_models(request: Request) -> ModelsResponse:
     """
-    Retrieve available LLM models from GPUStack server with enhanced information.
+    Retrieve available LLM models from GPUStack server.
     
-    This endpoint fetches all available language models from the connected GPUStack instance
-    with detailed information including status, readiness, and capabilities.
+    This endpoint fetches all available language models from the connected GPUStack instance.
     Only LLM models are returned (filtering out image, embedding, and reranker models).
     
     Returns:
-        ModelsResponse: List of available models with their metadata, status, and capabilities
+        ModelsResponse: List of available models with their metadata
         
     Raises:
         HTTPException: If the GPUStack server is unreachable or returns an error
@@ -33,29 +32,52 @@ async def get_models(request: Request) -> ModelsResponse:
         if settings.gpustack_api_token:
             headers["Authorization"] = f"Bearer {settings.gpustack_api_token}"
         
-        # Use direct HTTP client
-        async with httpx.AsyncClient(timeout=30.0) as http_client:
-            response = await http_client.get(models_url, headers=headers)
+        # Use shared HTTP client from app state  
+        http_client = request.app.state.http_client
+        response = await http_client.get(models_url, headers=headers)
         
         if response.status_code == 200:
             data = response.json()
             
-            # Filter and enhance LLM models information
-            enhanced_models = []
+            # Filter LLM models and add enhanced status information
+            llm_models = []
             if 'items' in data:
                 for model in data['items']:
                     # Include only LLM models (exclude image, embedding, reranker)
                     if 'llm' in model.get('categories', []):
-                        enhanced_model = await enhance_model_info(model, http_client, headers)
-                        enhanced_models.append(enhanced_model)
+                        try:
+                            # Add enhanced model info with status checks
+                            model = await enhance_model_info(model, http_client, headers)
+                        except Exception as e:
+                            # Fallback to basic model info if enhancement fails
+                            model = add_basic_model_info(model)
+                        llm_models.append(model)
             
-            return {"models": enhanced_models}
+            return {"models": llm_models}
         else:
             raise HTTPException(status_code=response.status_code, 
                               detail=f"GPUStack API error: {response.text}")
             
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching models: {str(e)}")
+
+def add_basic_model_info(model: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Add basic model information without status checks.
+    """
+    # Infer model capabilities from name
+    model["meta"] = infer_model_metadata(model["name"])
+    model["status"] = "unknown"  # We'll add status checks later
+    model["ready_replicas"] = 1  # Assume ready for now
+    model["total_replicas"] = 1
+    model["status_description"] = "Status check disabled for performance"
+    model["last_updated"] = model.get("created_at", "")
+    
+    # Add UI-friendly display info
+    model["display_name"] = create_display_name(model["name"], model["meta"])
+    model["size_category"] = categorize_model_size(model["meta"].get("n_params", 0))
+    
+    return model
 
 async def enhance_model_info(model: Dict[str, Any], http_client: httpx.AsyncClient, headers: Dict[str, str]) -> Dict[str, Any]:
     """

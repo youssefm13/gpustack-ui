@@ -27,6 +27,13 @@ async def infer(request: InferenceRequest) -> InferenceResponse:
         # Log the request for debugging
         print(f"Inference request: {prompt_data}")
         
+        # Validate model is available and ready (optional check)
+        # This helps catch issues early rather than getting errors from GPUStack
+        model_name = prompt_data.get('model')
+        if model_name:
+            # You could add model validation here if needed
+            pass
+        
         result = await send_to_gpustack(prompt_data)
         
         # Log the response for debugging

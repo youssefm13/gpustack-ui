@@ -73,7 +73,21 @@ async def stream_from_gpustack(data):
     except httpx.TimeoutException:
         raise Exception("Streaming request to GPUStack timed out")
     except httpx.HTTPStatusError as e:
-        raise Exception(f"GPUStack streaming HTTP error: {e.response.status_code}")
+        error_msg = f"GPUStack streaming HTTP error: {e.response.status_code}"
+        if e.response.status_code == 404:
+            error_msg += " - Model not found or not available"
+        elif e.response.status_code == 400:
+            error_msg += " - Bad request (check model parameters)"
+        elif e.response.status_code == 401:
+            error_msg += " - Unauthorized (check API token)"
+        elif e.response.status_code == 429:
+            error_msg += " - Rate limited (too many requests)"
+        try:
+            error_detail = await e.response.aread()
+            error_msg += f" - {error_detail.decode()}"
+        except:
+            pass
+        raise Exception(error_msg)
     except Exception as e:
         raise Exception(f"GPUStack streaming connection error: {str(e)}")
 

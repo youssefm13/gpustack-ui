@@ -220,7 +220,7 @@
                 
                 <!-- Auth Section -->
                 <div id="authSection" class="flex items-center gap-4">
-                    <div id="loginForm" style="display: none;">
+                    <div id="loginForm" style="display: block;">
                         <div class="flex items-center gap-2">
                             <input 
                                 type="text" 
@@ -251,7 +251,7 @@
                     </div>
                     <div id="logoutSection" style="display: none;">
                         <div class="flex items-center gap-3">
-                            <span class="text-sm" style="color: var(--text-primary);">Welcome, <span id="userDisplay">User</span></span>
+                            <span class="text-sm" style="color: var(--text-primary);">Welcome, <span id="userDisplay"></span></span>
                             <button 
                                 onclick="logout()" 
                                 class="px-3 py-2 rounded text-sm font-medium text-white transition-colors"
@@ -367,7 +367,13 @@
                 
                 <!-- Chat Messages -->
                 <div id="chatMessages" class="flex-1 overflow-y-auto p-4 min-h-0" style="background-color: var(--bg-primary);">
-                    <div class="text-center" style="color: var(--text-muted);">Start a conversation...</div>
+                    <div class="auth-required-message text-center p-8">
+                        <div class="inline-block px-6 py-4 rounded-lg" style="background-color: var(--bg-tertiary); border: 2px solid var(--accent-blue);">
+                            <div class="text-lg font-semibold mb-2" style="color: var(--accent-blue);">🔐 Authentication Required</div>
+                            <div class="text-sm" style="color: var(--text-secondary);">Please login with your credentials to access the AI chat interface.</div>
+                            <div class="text-xs mt-2" style="color: var(--text-muted);">For testing, use: admin/admin</div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Chat Input -->
@@ -376,18 +382,20 @@
                         <input 
                             type="text" 
                             id="messageInput" 
-                            placeholder="Type your message..." 
+                            placeholder="Please login to start chatting..." 
                             class="flex-1 px-4 py-3 rounded-lg focus:outline-none focus:ring-2 transition-colors"
-                            style="background-color: var(--bg-tertiary); border: 1px solid var(--border-color); color: var(--text-primary); focus:ring-color: var(--accent-blue);"
+                            style="background-color: var(--bg-tertiary); border: 1px solid var(--border-color); color: var(--text-primary); focus:ring-color: var(--accent-blue); opacity: 0.5;"
                             onkeypress="handleKeyPress(event)"
+                            disabled
                         >
                         <button 
                             id="sendButton"
                             onclick="sendMessage()" 
                             class="px-8 py-3 rounded-lg focus:outline-none focus:ring-2 transition-colors"
-                            style="background-color: var(--accent-blue); color: white; focus:ring-color: var(--accent-blue);"
+                            style="background-color: var(--accent-blue); color: white; focus:ring-color: var(--accent-blue); opacity: 0.5;"
                             onmouseover="this.style.opacity='0.9'"
                             onmouseout="this.style.opacity='1'"
+                            disabled
                         >
                             Send
                         </button>
@@ -396,7 +404,7 @@
                             id="stopButton"
                             onclick="stopChat()" 
                             class="px-8 py-3 rounded-lg focus:outline-none focus:ring-2 transition-colors"
-                            style="background-color: var(--accent-red); color: white; focus:ring-color: var(--accent-red); display: none;"
+style="background-color: var(--accent-red); color: white; focus:ring-color: var(--accent-red); display: none;"
                             onmouseover="this.style.opacity='0.9'"
                             onmouseout="this.style.opacity='1'"
                         >
@@ -549,19 +557,32 @@
             }
         }
 
-        // Calculate dynamic max_tokens based on model's context window
+        // Calculate dynamic max_tokens based on model's context window and current conversation
         function calculateMaxTokens() {
             const currentModelData = availableModels.find(m => m.name === currentModel);
             if (!currentModelData || !currentModelData.meta?.n_ctx) {
-                return 4000; // fallback
+                return 2000; // conservative fallback
             }
             
             const contextWindow = currentModelData.meta.n_ctx;
-            // Use 60% of context window for response, leaving 40% for conversation history
-            const maxTokens = Math.floor(contextWindow * 0.6);
             
-            // Set reasonable bounds
-            return Math.min(Math.max(maxTokens, 1000), 50000); // min 1000, max 50000
+            // Estimate tokens in current conversation (rough approximation: 4 chars per token)
+            let estimatedPromptTokens = 0;
+            conversationContext.forEach(msg => {
+                estimatedPromptTokens += Math.ceil(msg.content.length / 4);
+            });
+            
+            // Add some buffer for the current user message and system prompts
+            estimatedPromptTokens += 200;
+            
+            // Calculate available tokens for response (leave 20% buffer)
+            const availableTokens = Math.floor((contextWindow - estimatedPromptTokens) * 0.8);
+            
+            // Set reasonable bounds and ensure we don't exceed context
+            const maxTokens = Math.min(Math.max(availableTokens, 500), 8000);
+            
+            // Final safety check - never exceed half the context window
+            return Math.min(maxTokens, Math.floor(contextWindow / 2));
         }
 
         function stopChat() {
@@ -583,15 +604,30 @@
             const messageInput = document.getElementById('messageInput');
             
             if (isStreaming) {
+                // During streaming, show stop button and disable input
                 sendButton.style.display = 'none';
                 stopButton.style.display = 'flex';
+                stopButton.disabled = false;
+                stopButton.style.opacity = '1';
                 messageInput.disabled = true;
                 messageInput.style.opacity = '0.5';
             } else {
+                // When not streaming, show send button and handle auth state
                 sendButton.style.display = 'flex';
                 stopButton.style.display = 'none';
-                messageInput.disabled = false;
-                messageInput.style.opacity = '1';
+                
+                // Handle input and send button based on authentication
+                if (token) {
+                    messageInput.disabled = false;
+                    messageInput.style.opacity = '1';
+                    sendButton.disabled = false;
+                    sendButton.style.opacity = '1';
+                } else {
+                    messageInput.disabled = true;
+                    messageInput.style.opacity = '0.5';
+                    sendButton.disabled = true;
+                    sendButton.style.opacity = '0.5';
+                }
             }
         }
 
@@ -1190,8 +1226,21 @@
             
             const chatMessages = document.getElementById('chatMessages');
             
-            // Clear all messages
-            chatMessages.innerHTML = '<div class="text-center" style="color: var(--text-muted);">Start a conversation...</div>';
+            // Clear all messages - show different content based on auth status
+            if (token) {
+                chatMessages.innerHTML = '<div class="text-center" style="color: var(--text-muted);">Start a conversation...</div>';
+            } else {
+                // Show authentication required message when not logged in
+                chatMessages.innerHTML = `
+                    <div class="auth-required-message text-center p-8">
+                        <div class="inline-block px-6 py-4 rounded-lg" style="background-color: var(--bg-tertiary); border: 2px solid var(--accent-blue);">
+                            <div class="text-lg font-semibold mb-2" style="color: var(--accent-blue);">🔐 Authentication Required</div>
+                            <div class="text-sm" style="color: var(--text-secondary);">Please login with your credentials to access the AI chat interface.</div>
+                            <div class="text-xs mt-2" style="color: var(--text-muted);">For testing, use: admin/admin</div>
+                        </div>
+                    </div>
+                `;
+            }
             
             // Clear conversation context
             conversationContext = [];
@@ -1261,9 +1310,17 @@
         
         // Markdown rendering with copy buttons
         function renderMarkdown(content) {
-            const html = marked.parse(content);
-            
-            // Wrap code blocks with copy buttons
+            try {
+                // Sanitize content to handle special tags that might interfere with markdown
+                let sanitizedContent = content;
+                
+                // Escape angle brackets in reasoning tags like <think>
+                sanitizedContent = sanitizedContent.replace(/\u003cthink\u003e/gi, '\u003cthink\u003e');
+                sanitizedContent = sanitizedContent.replace(/\u003c\/think\u003e/gi, '\u003c/think\u003e');
+                
+                const html = marked.parse(sanitizedContent);
+                
+                // Wrap code blocks with copy buttons
             const wrappedHtml = html.replace(
                 /<pre><code([^>]*)>([\s\S]*?)<\/code><\/pre>/g,
                 (match, attrs, code) => {
@@ -1279,7 +1336,12 @@
                 }
             );
             
-            return `<div class="markdown-content text-sm leading-relaxed">${wrappedHtml}</div>`;
+                return `<div class="markdown-content text-sm leading-relaxed">${wrappedHtml}</div>`;
+            } catch (error) {
+                console.error('Error rendering markdown:', error);
+                // Fallback to plain text if markdown rendering fails
+                return `<div class="whitespace-pre-wrap text-sm leading-relaxed">${escapeHtml(content)}</div>`;
+            }
         }
         
         // Copy code function
@@ -1455,8 +1517,10 @@
                     // If current model is not ready, try to find a ready model
                     const readyModel = availableModels.find(m => m.status === 'ready');
                     if (readyModel && !selector.querySelector('[selected]')) {
+                        console.log(`Model ${currentModel} is not ready (${model.status}), switching to ${readyModel.name}`);
                         currentModel = readyModel.name;
                         localStorage.setItem('selectedModel', currentModel);
+                        addMessageToChat('system', `⚠️ Model '${model.name}' is not available (${model.status}). Switched to '${readyModel.name}'.`);
                     }
                 }
                 
@@ -2020,6 +2084,11 @@
                     sendButton.disabled = false;
                     sendButton.style.opacity = '1';
                 }
+                
+                // Clear the authentication required message and show start conversation message
+                if (chatMessages && chatMessages.querySelector('.auth-required-message')) {
+                    chatMessages.innerHTML = '<div class="text-center" style="color: var(--text-muted);">Start a conversation...</div>';
+                }
                 if (toolsSection) {
                     toolsSection.style.opacity = '1';
                     toolsSection.style.pointerEvents = 'auto';
@@ -2173,7 +2242,11 @@
         }
 
         function checkAuthOnLoad() {
+            // Always start with unauthenticated state to prevent flashing generic user
+            updateAuthUI(false);
+            
             if (token) {
+                // Validate the stored token
                 fetch(`${API_BASE}/api/auth/me`, {
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -2182,8 +2255,17 @@
                     if (res.ok) {
                         res.json().then(data => {
                             const userData = data.user || {};
-                            localStorage.setItem('username', userData.name || userData.username || 'User');
-                            updateAuthUI(true, userData);
+                            // Only update username if we have valid user data
+                            if (userData.name || userData.username) {
+                                localStorage.setItem('username', userData.name || userData.username);
+                                updateAuthUI(true, userData);
+                            } else {
+                                // Invalid user data - clear token and require login
+                                localStorage.removeItem('authToken');
+                                localStorage.removeItem('username');
+                                token = null;
+                                updateAuthUI(false);
+                            }
                         });
                     } else {
                         // Clear invalid token and show login form
@@ -2199,9 +2281,8 @@
                     token = null;
                     updateAuthUI(false);
                 });
-            } else {
-                updateAuthUI(false);
             }
+            // Note: If no token, we already called updateAuthUI(false) above
         }
         
         function handleAuthKeyPress(event) {
@@ -2227,6 +2308,12 @@
         document.addEventListener('DOMContentLoaded', () => {
             initTheme();
             initModelPreference();
+            
+            // Ensure authentication required state is shown initially if no token
+            if (!token) {
+                updateAuthUI(false);
+            }
+            
             checkAuthOnLoad();
         });
     </script>
