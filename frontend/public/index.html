@@ -1399,12 +1399,12 @@
             }
         }
         
-        // Update the model selector dropdown
+        // Update the model selector dropdown with enhanced status information
         function updateModelSelector() {
             const selector = document.getElementById('modelSelector');
             
             if (availableModels.length === 0) {
-                selector.innerHTML = '<option value="qwen3">Qwen3 (Default)</option>';
+                selector.innerHTML = '<option value="qwen3">Qwen3 (Loading...)</option>';
                 return;
             }
             
@@ -1414,25 +1414,50 @@
                 const option = document.createElement('option');
                 option.value = model.name;
                 
-                // Create a friendly display name
-                let displayName = model.name;
-                if (model.meta?.n_params) {
-                    const params = (model.meta.n_params / 1e9).toFixed(1);
-                    displayName += ` (${params}B)`;
-                }
+                // Use enhanced display name if available
+                let displayName = model.display_name || model.name;
                 
-                // Add status indicator
-                if (model.ready_replicas === 0) {
-                    displayName += ' - Offline';
+                // Add status indicator with emoji
+                const statusEmoji = {
+                    'ready': '🟢',
+                    'loading': '🟡',
+                    'error': '🔴',
+                    'unknown': '🔵'
+                };
+                
+                const emoji = statusEmoji[model.status] || '⚪';
+                displayName = `${emoji} ${displayName}`;
+                
+                // Add status text
+                if (model.status === 'ready') {
+                    displayName += ' - Ready';
+                } else if (model.status === 'loading') {
+                    displayName += ' - Loading';
+                    option.disabled = true;
+                    option.style.color = '#d97706';
+                } else if (model.status === 'error') {
+                    displayName += ' - Error';
+                    option.disabled = true;
+                    option.style.color = '#dc2626';
+                } else {
+                    displayName += ' - Unknown';
                     option.disabled = true;
                     option.style.color = '#6b7280';
                 }
                 
                 option.textContent = displayName;
+                option.title = model.status_description || 'No status information available';
                 
-                // Select current model
-                if (model.name === currentModel) {
+                // Select current model if it's ready
+                if (model.name === currentModel && model.status === 'ready') {
                     option.selected = true;
+                } else if (model.name === currentModel && model.status !== 'ready') {
+                    // If current model is not ready, try to find a ready model
+                    const readyModel = availableModels.find(m => m.status === 'ready');
+                    if (readyModel && !selector.querySelector('[selected]')) {
+                        currentModel = readyModel.name;
+                        localStorage.setItem('selectedModel', currentModel);
+                    }
                 }
                 
                 selector.appendChild(option);
