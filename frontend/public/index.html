@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NED Secure AI</title>
+    <title>NED Secure AI - CACHE BUSTER 21:52</title>
     <script src="./config.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
@@ -253,7 +253,8 @@
                         <div class="flex items-center gap-3">
                             <span class="text-sm" style="color: var(--text-primary);">Welcome, <span id="userDisplay"></span></span>
                             <button 
-                                onclick="logout()" 
+                                id="logoutButton"
+                                onclick="logout()"
                                 class="px-3 py-2 rounded text-sm font-medium text-white transition-colors"
                                 style="background-color: var(--accent-red);"
                                 onmouseover="this.style.opacity='0.9'"
@@ -498,6 +499,7 @@ style="background-color: var(--accent-red); color: white; focus:ring-color: var(
     </div>
 
     <script>
+        // Cache buster: 2025-06-29-21:50:52
         const API_BASE = window.CONFIG ? window.CONFIG.BACKEND_URL : 'http://localhost:8001';
         let conversationContext = [];
         let currentModel = 'qwen3';
@@ -2192,7 +2194,8 @@ style="background-color: var(--accent-red); color: white; focus:ring-color: var(
                 return;
             }
 
-            fetch(`${API_BASE}/api/auth/login`, {
+            // Use enhanced authentication v2 endpoint
+            fetch(`${API_BASE}/api/auth/v2/login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -2205,13 +2208,26 @@ style="background-color: var(--accent-red); color: white; focus:ring-color: var(
             .then(data => {
                 if (data.access_token) {
                     token = data.access_token;
+                    refreshToken = data.refresh_token;
                     localStorage.setItem('authToken', token);
+                    localStorage.setItem('refreshToken', refreshToken);
                     
                     const userData = data.user || {};
                     localStorage.setItem('username', userData.username || userData.name || username);
+                    localStorage.setItem('isAdmin', userData.is_admin || false);
 
                     updateAuthUI(true, userData);
-                    addMessageToChat('system', '✅ Login successful!');
+                    addMessageToChat('system', `✅ Login successful! Welcome ${userData.full_name || userData.username}`);
+                    
+                    // Load user preferences
+                    loadUserPreferences();
+                    
+                    // Show admin panel if user is admin
+                    if (userData.is_admin) {
+                        showAdminFeatures();
+                    } else {
+                        hideAdminFeatures();
+                    }
                     
                     // Clear input fields
                     document.getElementById('username').value = '';
@@ -2226,18 +2242,83 @@ style="background-color: var(--accent-red); color: white; focus:ring-color: var(
         }
 
         function logout() {
-            fetch(`${API_BASE}/api/auth/logout`, {
+            // 1. Clear all localStorage immediately
+            localStorage.clear();
+            
+            // 2. Clear token variables
+            token = null;
+            refreshToken = null;
+            
+            // 3. Force close admin panel state
+            adminPanelVisible = false;
+            
+            // 4. Check if admin button exists before removal
+            const adminButton = document.getElementById('adminButton');
+            let adminButtonFound = !!adminButton;
+            
+            // 5. Remove ALL admin elements aggressively
+            const elementsToRemove = [
+                'adminOverlay',
+                'adminButton',
+                'adminPanel'
+            ];
+            
+            let removedElements = [];
+            elementsToRemove.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    removedElements.push(id);
+                    element.remove();
+                }
+            });
+            
+            // 6. Remove by class and content - more aggressive
+            let removedOverlays = 0;
+            const overlays = document.querySelectorAll('.fixed, [class*="fixed"]');
+            overlays.forEach(overlay => {
+                if (overlay.innerHTML && (overlay.innerHTML.includes('Admin Panel') || overlay.innerHTML.includes('👑'))) {
+                    overlay.remove();
+                    removedOverlays++;
+                }
+            });
+            
+            // 7. Remove all buttons containing admin text
+            let removedButtons = 0;
+            const buttons = document.querySelectorAll('button');
+            buttons.forEach(button => {
+                if (button.textContent.includes('Admin') || button.innerHTML.includes('👑')) {
+                    button.remove();
+                    removedButtons++;
+                }
+            });
+            
+            // 8. Force DOM refresh by hiding and showing body
+            document.body.style.display = 'none';
+            setTimeout(() => {
+                document.body.style.display = 'flex';
+            }, 10);
+            
+            // 9. Update UI immediately
+            updateAuthUI(false);
+            
+            // 10. Show simple logout confirmation
+            addMessageToChat('system', '🔄 Logged out successfully!');
+            
+            // 11. Call API in background (don't wait for it)
+            fetch(`${API_BASE}/api/auth/v2/logout`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
-                },
-            }).finally(() => {
-                // Clear token from localStorage
-                localStorage.removeItem('authToken');
-                localStorage.removeItem('username');
-                token = null;
-                updateAuthUI(false);
-                addMessageToChat('system', '👋 Logged out successfully!');
+                    'Content-Type': 'application/json'
+                }
+            }).catch(() => {
+                // Silently try v1 if v2 fails
+                return fetch(`${API_BASE}/api/auth/logout`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+            }).catch(() => {
+                // Ignore API errors - we already cleaned up locally
             });
         }
 
@@ -2258,13 +2339,22 @@ style="background-color: var(--accent-red); color: white; focus:ring-color: var(
                             // Only update username if we have valid user data
                             if (userData.name || userData.username) {
                                 localStorage.setItem('username', userData.name || userData.username);
+                                localStorage.setItem('isAdmin', userData.is_admin || false);
                                 updateAuthUI(true, userData);
+                                
+                                // Show/hide admin features based on role
+                                if (userData.is_admin) {
+                                    showAdminFeatures();
+                                } else {
+                                    hideAdminFeatures();
+                                }
                             } else {
                                 // Invalid user data - clear token and require login
                                 localStorage.removeItem('authToken');
                                 localStorage.removeItem('username');
                                 token = null;
                                 updateAuthUI(false);
+                                hideAdminFeatures();
                             }
                         });
                     } else {
@@ -2304,6 +2394,370 @@ style="background-color: var(--accent-red); color: white; focus:ring-color: var(
             return headers;
         }
         
+        // Admin panel functionality
+        let adminPanelVisible = false;
+        
+        function showAdminFeatures() {
+            // Add admin button to header if not exists
+            if (!document.getElementById('adminButton')) {
+                const authSection = document.getElementById('authSection');
+                const adminButton = document.createElement('button');
+                adminButton.id = 'adminButton';
+                adminButton.innerHTML = '👑 Admin Panel';
+                adminButton.className = 'px-3 py-2 rounded text-sm font-medium text-white transition-colors';
+                adminButton.style.cssText = 'background-color: var(--accent-purple); margin-left: 10px;';
+                adminButton.onmouseover = () => adminButton.style.opacity = '0.9';
+                adminButton.onmouseout = () => adminButton.style.opacity = '1';
+                adminButton.onclick = toggleAdminPanel;
+                
+                authSection.appendChild(adminButton);
+            }
+        }
+        
+        function hideAdminFeatures() {
+            const adminButton = document.getElementById('adminButton');
+            if (adminButton) {
+                adminButton.remove();
+            }
+            hideAdminPanel();
+        }
+        
+        function toggleAdminPanel() {
+            adminPanelVisible = !adminPanelVisible;
+            if (adminPanelVisible) {
+                showAdminPanel();
+            } else {
+                hideAdminPanel();
+            }
+        }
+        
+        function showAdminPanel() {
+            // Create admin panel overlay
+            const overlay = document.createElement('div');
+            overlay.id = 'adminOverlay';
+            overlay.className = 'fixed inset-0 z-50 flex items-center justify-center';
+            overlay.style.cssText = 'background-color: rgba(0,0,0,0.7);';
+            
+            const panel = document.createElement('div');
+            panel.className = 'rounded-lg shadow-xl p-6 max-w-6xl w-full max-h-[90vh] overflow-y-auto m-4';
+            panel.style.cssText = 'background-color: var(--bg-secondary); border: 1px solid var(--border-color);';
+            
+            panel.innerHTML = `
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold" style="color: var(--text-primary);">👑 Admin Panel</h2>
+                    <button onclick="hideAdminPanel()" class="px-4 py-2 rounded text-white transition-colors" style="background-color: var(--accent-red);">
+                        ✕ Close
+                    </button>
+                </div>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- User Management -->
+                    <div class="rounded-lg p-4" style="background-color: var(--bg-tertiary); border: 1px solid var(--border-color);">
+                        <h3 class="text-lg font-semibold mb-4" style="color: var(--text-primary);">👥 User Management</h3>
+                        <div class="space-y-3">
+                            <button onclick="loadUsers()" class="w-full px-4 py-2 rounded text-white transition-colors" style="background-color: var(--accent-blue);">
+                                📋 View All Users
+                            </button>
+                            <button onclick="showCreateUserForm()" class="w-full px-4 py-2 rounded text-white transition-colors" style="background-color: var(--accent-green);">
+                                ➕ Create New User
+                            </button>
+                            <div id="usersList" class="mt-4" style="max-height: 300px; overflow-y: auto;"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Session Management -->
+                    <div class="rounded-lg p-4" style="background-color: var(--bg-tertiary); border: 1px solid var(--border-color);">
+                        <h3 class="text-lg font-semibold mb-4" style="color: var(--text-primary);">🔐 Session Management</h3>
+                        <div class="space-y-3">
+                            <button onclick="loadSessions()" class="w-full px-4 py-2 rounded text-white transition-colors" style="background-color: var(--accent-blue);">
+                                📊 View Active Sessions
+                            </button>
+                            <button onclick="cleanupExpiredSessions()" class="w-full px-4 py-2 rounded text-white transition-colors" style="background-color: var(--accent-yellow);">
+                                🧹 Cleanup Expired Sessions
+                            </button>
+                            <div id="sessionsList" class="mt-4" style="max-height: 300px; overflow-y: auto;"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- System Health -->
+                    <div class="rounded-lg p-4" style="background-color: var(--bg-tertiary); border: 1px solid var(--border-color);">
+                        <h3 class="text-lg font-semibold mb-4" style="color: var(--text-primary);">⚡ System Health</h3>
+                        <div class="space-y-3">
+                            <button onclick="loadSystemHealth()" class="w-full px-4 py-2 rounded text-white transition-colors" style="background-color: var(--accent-blue);">
+                                🔍 Check System Status
+                            </button>
+                            <div id="systemHealth" class="mt-4"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- User Creation Form -->
+                    <div class="rounded-lg p-4" style="background-color: var(--bg-tertiary); border: 1px solid var(--border-color);">
+                        <h3 class="text-lg font-semibold mb-4" style="color: var(--text-primary);">➕ Create User</h3>
+                        <div id="createUserForm" class="space-y-3" style="display: none;">
+                            <input type="text" id="newUsername" placeholder="Username" class="w-full px-3 py-2 rounded" style="background-color: var(--bg-quaternary); border: 1px solid var(--border-color); color: var(--text-primary);">
+                            <input type="password" id="newPassword" placeholder="Password" class="w-full px-3 py-2 rounded" style="background-color: var(--bg-quaternary); border: 1px solid var(--border-color); color: var(--text-primary);">
+                            <input type="text" id="newFullName" placeholder="Full Name" class="w-full px-3 py-2 rounded" style="background-color: var(--bg-quaternary); border: 1px solid var(--border-color); color: var(--text-primary);">
+                            <label class="flex items-center">
+                                <input type="checkbox" id="newIsAdmin" class="mr-2">
+                                <span style="color: var(--text-secondary);">Admin User</span>
+                            </label>
+                            <button onclick="createUser()" class="w-full px-4 py-2 rounded text-white transition-colors" style="background-color: var(--accent-green);">
+                                ✅ Create User
+                            </button>
+                            <button onclick="hideCreateUserForm()" class="w-full px-4 py-2 rounded text-white transition-colors" style="background-color: var(--accent-red);">
+                                ❌ Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            overlay.appendChild(panel);
+            document.body.appendChild(overlay);
+            
+            // Load initial data
+            loadSystemHealth();
+        }
+        
+        function hideAdminPanel() {
+            const overlay = document.getElementById('adminOverlay');
+            if (overlay) {
+                overlay.remove();
+                adminPanelVisible = false;
+            }
+        }
+        
+        async function loadUsers() {
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/v2/users`, {
+                    headers: getAuthHeaders()
+                });
+                
+                if (response.ok) {
+                    const users = await response.json();
+                    displayUsers(users);
+                } else {
+                    displayError('usersList', 'Failed to load users');
+                }
+            } catch (error) {
+                displayError('usersList', `Error: ${error.message}`);
+            }
+        }
+        
+        function displayUsers(users) {
+            const container = document.getElementById('usersList');
+            if (!container) return;
+            
+            container.innerHTML = `
+                <div class="space-y-2">
+                    ${users.map(user => `
+                        <div class="p-3 rounded" style="background-color: var(--bg-quaternary); border: 1px solid var(--border-color);">
+                            <div class="flex justify-between items-center">
+                                <div>
+                                    <div class="font-medium" style="color: var(--text-primary);">${user.username} ${user.is_admin ? '👑' : ''}</div>
+                                    <div class="text-sm" style="color: var(--text-secondary);">${user.full_name || 'No full name'}</div>
+                                    <div class="text-xs" style="color: var(--text-muted);">ID: ${user.id} | Created: ${new Date(user.created_at).toLocaleDateString()}</div>
+                                </div>
+                                <div class="flex space-x-2">
+                                    <button onclick="toggleUserAdmin(${user.id}, ${!user.is_admin})" 
+                                            class="px-2 py-1 rounded text-xs text-white transition-colors" 
+                                            style="background-color: var(--accent-yellow);">
+                                        ${user.is_admin ? 'Remove Admin' : 'Make Admin'}
+                                    </button>
+                                    ${user.username !== 'admin' ? `
+                                        <button onclick="deleteUser(${user.id}, '${user.username}')" 
+                                                class="px-2 py-1 rounded text-xs text-white transition-colors" 
+                                                style="background-color: var(--accent-red);">
+                                            Delete
+                                        </button>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+        
+        async function loadSessions() {
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/v2/sessions`, {
+                    headers: getAuthHeaders()
+                });
+                
+                if (response.ok) {
+                    const sessions = await response.json();
+                    displaySessions(sessions);
+                } else {
+                    displayError('sessionsList', 'Failed to load sessions');
+                }
+            } catch (error) {
+                displayError('sessionsList', `Error: ${error.message}`);
+            }
+        }
+        
+        function displaySessions(sessions) {
+            const container = document.getElementById('sessionsList');
+            if (!container) return;
+            
+            // Group sessions by user
+            const sessionsByUser = sessions.reduce((acc, session) => {
+                if (!acc[session.username]) acc[session.username] = [];
+                acc[session.username].push(session);
+                return acc;
+            }, {});
+            
+            container.innerHTML = `
+                <div class="space-y-3">
+                    ${Object.entries(sessionsByUser).map(([username, userSessions]) => `
+                        <div class="p-3 rounded" style="background-color: var(--bg-quaternary); border: 1px solid var(--border-color);">
+                            <div class="font-medium mb-2" style="color: var(--text-primary);">${username} (${userSessions.length} sessions)</div>
+                            ${userSessions.map(session => `
+                                <div class="text-xs p-2 mt-1 rounded" style="background-color: var(--bg-primary); color: var(--text-secondary);">
+                                    <div>${session.token_type} token | ${session.ip_address || 'Unknown IP'}</div>
+                                    <div>Expires: ${new Date(session.expires_at).toLocaleString()}</div>
+                                    <div class="flex justify-between items-center mt-1">
+                                        <span>Last used: ${new Date(session.last_accessed).toLocaleString()}</span>
+                                        <button onclick="revokeSession('${session.jti}')" 
+                                                class="px-2 py-1 rounded text-xs text-white transition-colors" 
+                                                style="background-color: var(--accent-red);">
+                                            Revoke
+                                        </button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+        
+        async function loadSystemHealth() {
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/v2/health`);
+                
+                if (response.ok) {
+                    const health = await response.json();
+                    displaySystemHealth(health);
+                } else {
+                    displayError('systemHealth', 'Failed to load system health');
+                }
+            } catch (error) {
+                displayError('systemHealth', `Error: ${error.message}`);
+            }
+        }
+        
+        function displaySystemHealth(health) {
+            const container = document.getElementById('systemHealth');
+            if (!container) return;
+            
+            const statusColor = health.status === 'healthy' ? 'var(--accent-green)' : 'var(--accent-red)';
+            const dbStatusColor = health.database?.status === 'healthy' ? 'var(--accent-green)' : 'var(--accent-red)';
+            
+            container.innerHTML = `
+                <div class="space-y-2">
+                    <div class="p-3 rounded" style="background-color: var(--bg-quaternary); border: 1px solid var(--border-color);">
+                        <div class="flex justify-between">
+                            <span style="color: var(--text-secondary);">System Status:</span>
+                            <span style="color: ${statusColor}; font-weight: bold;">${health.status.toUpperCase()}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span style="color: var(--text-secondary);">Database:</span>
+                            <span style="color: ${dbStatusColor}; font-weight: bold;">${health.database?.status?.toUpperCase() || 'UNKNOWN'}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span style="color: var(--text-secondary);">Auth Service:</span>
+                            <span style="color: var(--accent-blue); font-weight: bold;">${health.auth_service || 'UNKNOWN'}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span style="color: var(--text-secondary);">Expired Sessions Cleaned:</span>
+                            <span style="color: var(--text-primary);">${health.expired_sessions_cleaned || 0}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function showCreateUserForm() {
+            const form = document.getElementById('createUserForm');
+            if (form) {
+                form.style.display = 'block';
+                // Clear form
+                document.getElementById('newUsername').value = '';
+                document.getElementById('newPassword').value = '';
+                document.getElementById('newFullName').value = '';
+                document.getElementById('newIsAdmin').checked = false;
+            }
+        }
+        
+        function hideCreateUserForm() {
+            const form = document.getElementById('createUserForm');
+            if (form) {
+                form.style.display = 'none';
+            }
+        }
+        
+        async function createUser() {
+            const username = document.getElementById('newUsername').value.trim();
+            const password = document.getElementById('newPassword').value.trim();
+            const fullName = document.getElementById('newFullName').value.trim();
+            const isAdmin = document.getElementById('newIsAdmin').checked;
+            
+            if (!username || !password) {
+                alert('Username and password are required!');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/v2/users`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        username,
+                        password,
+                        full_name: fullName || username,
+                        is_admin: isAdmin
+                    })
+                });
+                
+                if (response.ok) {
+                    const newUser = await response.json();
+                    hideCreateUserForm();
+                    loadUsers(); // Refresh user list
+                    addMessageToChat('system', `✅ User '${username}' created successfully!`);
+                } else {
+                    const error = await response.json();
+                    alert(`Failed to create user: ${error.detail || 'Unknown error'}`);
+                }
+            } catch (error) {
+                alert(`Error creating user: ${error.message}`);
+            }
+        }
+        
+        function displayError(containerId, message) {
+            const container = document.getElementById(containerId);
+            if (container) {
+                container.innerHTML = `<div class="text-red-400 text-sm">${message}</div>`;
+            }
+        }
+        
+        // Load user preferences function
+        async function loadUserPreferences() {
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/v2/preferences`, {
+                    headers: getAuthHeaders()
+                });
+                
+                if (response.ok) {
+                    const preferences = await response.json();
+                    // Apply preferences (future implementation)
+                    console.log('User preferences loaded:', preferences);
+                }
+            } catch (error) {
+                console.log('Failed to load user preferences:', error);
+            }
+        }
+        
         // Initialize theme when page loads
         document.addEventListener('DOMContentLoaded', () => {
             initTheme();
@@ -2315,6 +2769,16 @@ style="background-color: var(--accent-red); color: white; focus:ring-color: var(
             }
             
             checkAuthOnLoad();
+            
+            // Add logout button event listeners to ALL logout buttons
+            const logoutButtons = Array.from(document.querySelectorAll('button')).filter(btn => 
+                btn.textContent.includes('Logout')
+            );
+            console.log('Found logout buttons:', logoutButtons.length);
+            logoutButtons.forEach((btn, index) => {
+                console.log(`Adding listener to logout button ${index}:`, btn.id || 'no-id');
+                btn.addEventListener('click', logout);
+            });
         });
     </script>
 </body>
