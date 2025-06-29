@@ -7,7 +7,7 @@ import os
 from unittest.mock import patch, MagicMock
 from io import BytesIO
 
-from services.file_processor import FileProcessor
+from services.file_processor import EnhancedFileProcessor
 
 
 class TestFileProcessor:
