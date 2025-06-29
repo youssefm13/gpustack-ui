@@ -12,6 +12,12 @@ passlib[bcrypt]
 python-dotenv
 pydantic-settings
 
+# Database dependencies
+sqlalchemy
+alembic
+aiosqlite
+greenlet
+
 # Testing dependencies
 pytest
 pytest-asyncio
