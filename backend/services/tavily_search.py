@@ -4,10 +4,32 @@ import httpx
 import json
 import re
 import asyncio
+from typing import Optional
 
-client = TavilyClient(api_key=settings.tavily_api_key)
+# Global client instance - initialized lazily
+_client: Optional[TavilyClient] = None
+
+def get_tavily_client() -> Optional[TavilyClient]:
+    """Get Tavily client instance with lazy initialization."""
+    global _client
+    if _client is None and settings.tavily_api_key:
+        try:
+            _client = TavilyClient(api_key=settings.tavily_api_key)
+        except Exception as e:
+            print(f"Failed to initialize Tavily client: {e}")
+            return None
+    return _client
 
 async def perform_web_search_async(query: str, http_client: httpx.AsyncClient = None):
+    # Get Tavily client
+    client = get_tavily_client()
+    if not client:
+        return {
+            "query": query,
+            "results": [],
+            "error": "Tavily search service is not available (API key not configured)"
+        }
+    
     # Enhance query for better results
     enhanced_query = enhance_search_query(query)
     

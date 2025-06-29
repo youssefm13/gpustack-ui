@@ -18,11 +18,11 @@ class Settings(BaseSettings):
     env: str = Field(default="development", env="ENV")
     
     # GPUStack API Configuration
-    gpustack_api_base: str = Field(default="http://localhost:8080", env="GPUSTACK_API_BASE")
-    gpustack_api_token: Optional[str] = Field(default=None, env="GPUSTACK_API_TOKEN")
+    gpustack_api_base: str = Field(default="http://192.168.1.231:80", env="GPUSTACK_API_BASE")
+    gpustack_api_token: Optional[str] = Field(default="gpustack_8ef78fd710648bc2_83d1963355f9d49f786e3abe35f893d5", env="GPUSTACK_API_TOKEN")
     
     # Tavily Search API
-    tavily_api_key: Optional[str] = Field(default=None, env="TAVILY_API_KEY")
+    tavily_api_key: Optional[str] = Field(default="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", env="TAVILY_API_KEY")
     
     # JWT Authentication
     jwt_secret_key: str = Field(
