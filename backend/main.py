@@ -109,7 +109,8 @@ app.include_router(health.router, prefix="/api", tags=["health"])
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 
 # Static file serving for frontend
-frontend_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "public")
+# In Docker, the frontend is copied to /app/frontend
+frontend_dir = os.path.join(os.getcwd(), "frontend", "public")
 if os.path.exists(frontend_dir):
     app.mount("/static", StaticFiles(directory=frontend_dir), name="static")
 
