@@ -11,3 +11,10 @@ python-jose[cryptography]
 passlib[bcrypt]
 python-dotenv
 
+# Testing dependencies
+pytest
+pytest-asyncio
+pytest-cov
+httpx
+faker
+
