@@ -6,6 +6,16 @@ import re
 from typing import Dict, Any, Optional, List
 from fastapi import UploadFile
 from datetime import datetime
+import tempfile
+import os
+from pathlib import Path
+import asyncio
+import logging
+
+# Import our new OCR service
+from .ocr_service import ocr_service, OCRLanguage, ImagePreprocessingMode
+
+logger = logging.getLogger(__name__)
 
 class EnhancedFileProcessor:
     """
@@ -166,7 +176,7 @@ class EnhancedFileProcessor:
         }
     
     async def _process_image(self, file: UploadFile) -> Dict[str, Any]:
-        """Enhanced image processing with metadata extraction."""
+        """Enhanced image processing with OCR and metadata extraction."""
         content = ""
         metadata = {}
         structure = {}
@@ -193,17 +203,87 @@ class EnhancedFileProcessor:
                         if tag_id in [271, 272, 306]:  # Make, Model, DateTime
                             metadata[f"exif_tag_{tag_id}"] = str(value)
             
-            # TODO: Add OCR capability here in Phase 2
-            content = f"""[Image Analysis]
+            # Save image to temporary file for OCR processing
+            with tempfile.NamedTemporaryFile(suffix=f'.{img.format.lower()}', delete=False) as temp_file:
+                img.save(temp_file.name)
+                temp_path = temp_file.name
+            
+            try:
+                # Perform OCR on the image
+                ocr_result = await ocr_service.extract_text_from_image(
+                    temp_path,
+                    language=OCRLanguage.AUTO_DETECT,
+                    preprocessing_mode=ImagePreprocessingMode.AUTO
+                )
+                
+                # Build content with OCR results
+                if ocr_result.text.strip():
+                    content = f"""[Image Analysis with OCR]
 Filename: {file.filename}
 Dimensions: {img.size[0]}x{img.size[1]} pixels
 Format: {img.format}
 Color Mode: {img.mode}
 File Size: {len(file_content):,} bytes
 
-Note: OCR text extraction will be available in the next update."""
+=== EXTRACTED TEXT ===
+{ocr_result.text}
+
+=== OCR METADATA ===
+Confidence: {ocr_result.confidence:.1f}%
+Detected Language: {ocr_result.language}
+Processing Time: {ocr_result.processing_time:.2f}s
+Word Count: {ocr_result.word_count}
+Character Count: {ocr_result.character_count}
+Preprocessing Applied: {', '.join(ocr_result.preprocessing_applied)}"""
+                    
+                    # Add OCR metadata
+                    metadata.update({
+                        "ocr_confidence": ocr_result.confidence,
+                        "ocr_language": ocr_result.language,
+                        "ocr_word_count": ocr_result.word_count,
+                        "ocr_character_count": ocr_result.character_count,
+                        "ocr_processing_time": ocr_result.processing_time,
+                        "ocr_preprocessing": ocr_result.preprocessing_applied,
+                        "ocr_errors": ocr_result.errors
+                    })
+                    
+                    # Add structure information
+                    structure.update({
+                        "has_text": True,
+                        "text_quality": "high" if ocr_result.confidence > 80 else "medium" if ocr_result.confidence > 60 else "low",
+                        "extracted_text": ocr_result.text
+                    })
+                else:
+                    content = f"""[Image Analysis - No Text Detected]
+Filename: {file.filename}
+Dimensions: {img.size[0]}x{img.size[1]} pixels
+Format: {img.format}
+Color Mode: {img.mode}
+File Size: {len(file_content):,} bytes
+
+=== OCR RESULTS ===
+No readable text was detected in this image.
+OCR Confidence: {ocr_result.confidence:.1f}%
+Processing Time: {ocr_result.processing_time:.2f}s
+Preprocessing Applied: {', '.join(ocr_result.preprocessing_applied)}"""
+                    
+                    metadata.update({
+                        "ocr_confidence": ocr_result.confidence,
+                        "ocr_no_text_detected": True,
+                        "ocr_processing_time": ocr_result.processing_time
+                    })
+                    
+                    structure["has_text"] = False
+            
+            finally:
+                # Clean up temporary file
+                try:
+                    os.unlink(temp_path)
+                except Exception:
+                    pass
             
         except Exception as e:
+            logger.error(f"Error processing image {file.filename}: {str(e)}")
             content = f"[Error processing image: {str(e)}]"
             metadata["error"] = str(e)
         
