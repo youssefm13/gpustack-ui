@@ -278,11 +278,77 @@
 
     <!-- Main Interface -->
     <div class="flex flex-1 min-h-0">
+        <!-- Conversation History Sidebar -->
+        <div id="conversationSidebar" class="w-80 flex flex-col" style="background-color: var(--bg-secondary); border-right: 1px solid var(--border-color); display: none;">
+            <div class="p-4" style="border-bottom: 1px solid var(--border-color);">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-semibold" style="color: var(--text-primary);">Chat History</h2>
+                    <button 
+                        onclick="toggleConversationSidebar()" 
+                        class="px-2 py-1 rounded text-xs"
+                        style="background-color: var(--bg-tertiary); color: var(--text-secondary); border: 1px solid var(--border-color);"
+                        title="Hide conversation history"
+                    >
+                        ✕
+                    </button>
+                </div>
+                <div class="flex gap-2">
+                    <button 
+                        onclick="createNewConversation()" 
+                        class="flex-1 px-3 py-2 rounded text-sm font-medium text-white transition-colors"
+                        style="background-color: var(--accent-green);"
+                        onmouseover="this.style.opacity='0.9'"
+                        onmouseout="this.style.opacity='1'"
+                    >
+                        + New Chat
+                    </button>
+                </div>
+                <div class="mt-3">
+                    <input 
+                        type="text" 
+                        id="conversationSearch" 
+                        placeholder="Search conversations..." 
+                        class="w-full px-3 py-2 rounded text-sm focus:outline-none focus:ring-2"
+                        style="background-color: var(--bg-tertiary); border: 1px solid var(--border-color); color: var(--text-primary);"
+                        oninput="searchConversations()"
+                    >
+                </div>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto">
+                <div id="conversationList" class="p-2">
+                    <div class="text-center py-8 text-sm" style="color: var(--text-muted);">
+                        No conversations yet. Start a new chat!
+                    </div>
+                </div>
+            </div>
+            
+            <div class="p-4" style="border-top: 1px solid var(--border-color);">
+                <div id="conversationStats" class="text-xs space-y-1" style="color: var(--text-muted);">
+                    <div>Total conversations: <span id="totalConversations">0</span></div>
+                    <div>Total messages: <span id="totalMessages">0</span></div>
+                </div>
+            </div>
+        </div>
+        
         <!-- Chat Section -->
         <div class="flex-1 flex flex-col">
             <div class="flex-1 flex flex-col m-4 rounded-lg min-h-0" style="background-color: var(--bg-secondary);">
                 <div class="p-4 flex-shrink-0 flex items-center justify-between" style="border-bottom: 1px solid var(--border-color);">
-                    <h2 class="text-xl font-semibold" style="color: var(--text-primary);">Chat</h2>
+                    <div class="flex items-center gap-3">
+                        <button 
+                            id="toggleHistoryButton"
+                            onclick="toggleConversationSidebar()" 
+                            class="px-3 py-1 rounded text-xs transition-colors flex items-center gap-1"
+                            style="background-color: var(--bg-quaternary); color: var(--text-secondary); border: 1px solid var(--border-color);"
+                            onmouseover="this.style.backgroundColor='var(--accent-blue)'; this.style.color='white'"
+                            onmouseout="this.style.backgroundColor='var(--bg-quaternary)'; this.style.color='var(--text-secondary)'"
+                            title="Toggle conversation history"
+                        >
+                            🗣️ History
+                        </button>
+                        <h2 class="text-xl font-semibold" style="color: var(--text-primary);">Chat</h2>
+                    </div>
                     <div class="flex items-center gap-2">
                         <!-- Export Dropdown -->
                         <div class="relative" id="exportDropdown">
@@ -754,6 +820,10 @@ style="background-color: var(--accent-red); color: white; focus:ring-color: var(
                         // Display response metrics
                         displayResponseMetrics(streamingMessageId);
                         
+                        // Save messages to conversation history
+                        await saveMessageToConversation('user', message);
+                        await saveMessageToConversation('assistant', fullResponse);
+                        
                         // Update conversation context with complete response
                         conversationContext.push(
                             { role: "user", content: message },
@@ -763,6 +833,11 @@ style="background-color: var(--accent-red); color: white; focus:ring-color: var(
                         // Keep only last 10 messages for context
                         if (conversationContext.length > 20) {
                             conversationContext = conversationContext.slice(-20);
+                        }
+                        
+                        // Update conversation list if visible
+                        if (conversationHistoryVisible) {
+                            loadConversations();
                         }
                         
                     } catch (streamError) {
@@ -1244,8 +1319,14 @@ style="background-color: var(--accent-red); color: white; focus:ring-color: var(
                 `;
             }
             
-            // Clear conversation context
+            // Clear conversation context and reset conversation state
             conversationContext = [];
+            currentConversationId = null;
+            
+            // Refresh conversation list if visible to remove active state
+            if (conversationHistoryVisible) {
+                loadConversations();
+            }
             
             // Show confirmation message briefly
             const confirmationDiv = document.createElement('div');
@@ -2738,6 +2819,327 @@ style="background-color: var(--accent-red); color: white; focus:ring-color: var(
             const container = document.getElementById(containerId);
             if (container) {
                 container.innerHTML = `<div class="text-red-400 text-sm">${message}</div>`;
+            }
+        }
+        
+        // Conversation History Variables
+        let currentConversationId = null;
+        let conversationHistoryVisible = false;
+        
+        // Conversation History Functions
+        function toggleConversationSidebar() {
+            const sidebar = document.getElementById('conversationSidebar');
+            const toggleButton = document.getElementById('toggleHistoryButton');
+            
+            conversationHistoryVisible = !conversationHistoryVisible;
+            
+            if (conversationHistoryVisible) {
+                sidebar.style.display = 'flex';
+                toggleButton.innerHTML = '🗣️ Hide History';
+                loadConversations();
+                loadConversationStats();
+            } else {
+                sidebar.style.display = 'none';
+                toggleButton.innerHTML = '🗣️ History';
+            }
+        }
+        
+        async function loadConversations() {
+            if (!token) {
+                updateConversationsList([], 'Please login to view conversation history.');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/conversations/`, {
+                    headers: getAuthHeaders()
+                });
+                
+                if (response.ok) {
+                    const conversations = await response.json();
+                    updateConversationsList(conversations);
+                } else {
+                    updateConversationsList([], 'Failed to load conversations.');
+                }
+            } catch (error) {
+                updateConversationsList([], `Error: ${error.message}`);
+            }
+        }
+        
+        function updateConversationsList(conversations, errorMessage = null) {
+            const listContainer = document.getElementById('conversationList');
+            
+            if (errorMessage) {
+                listContainer.innerHTML = `
+                    <div class="text-center py-8 text-sm" style="color: var(--text-muted);">
+                        ${errorMessage}
+                    </div>
+                `;
+                return;
+            }
+            
+            if (conversations.length === 0) {
+                listContainer.innerHTML = `
+                    <div class="text-center py-8 text-sm" style="color: var(--text-muted);">
+                        No conversations yet. Start a new chat!
+                    </div>
+                `;
+                return;
+            }
+            
+            listContainer.innerHTML = conversations.map(conv => {
+                const isActive = currentConversationId === conv.id;
+                const truncatedTitle = conv.title.length > 30 ? conv.title.substring(0, 30) + '...' : conv.title;
+                const lastUpdate = new Date(conv.updated_at).toLocaleDateString();
+                
+                return `
+                    <div class="conversation-item p-3 mb-2 rounded cursor-pointer transition-colors ${
+                        isActive ? 'bg-opacity-20' : ''
+                    }" 
+                         style="background-color: ${isActive ? 'var(--accent-blue)' : 'var(--bg-tertiary)'}; border: 1px solid var(--border-color);" 
+                         onclick="loadConversation('${conv.id}')" 
+                         onmouseover="this.style.backgroundColor='var(--bg-quaternary)'" 
+                         onmouseout="this.style.backgroundColor='${isActive ? 'var(--accent-blue)' : 'var(--bg-tertiary)'}'"
+                    >
+                        <div class="flex justify-between items-start">
+                            <div class="flex-1">
+                                <div class="font-medium text-sm" style="color: var(--text-primary);" title="${conv.title}">
+                                    ${truncatedTitle}
+                                </div>
+                                <div class="text-xs mt-1" style="color: var(--text-muted);">
+                                    ${conv.message_count} messages • ${lastUpdate}
+                                </div>
+                                <div class="text-xs" style="color: var(--text-muted);">
+                                    ${conv.model_used || 'Unknown model'}
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-1 ml-2">
+                                <button 
+                                    onclick="event.stopPropagation(); deleteConversation('${conv.id}')" 
+                                    class="p-1 rounded text-xs opacity-70 hover:opacity-100 transition-opacity"
+                                    style="color: var(--accent-red);"
+                                    title="Delete conversation"
+                                >
+                                    🗑️
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        async function createNewConversation() {
+            if (!token) {
+                addMessageToChat('system', '🔐 Please login to create conversations.');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/conversations/`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        title: `New Chat ${new Date().toLocaleString()}`,
+                        model_used: currentModel
+                    })
+                });
+                
+                if (response.ok) {
+                    const newConversation = await response.json();
+                    
+                    // Clear current chat and start new conversation
+                    clearChat();
+                    currentConversationId = newConversation.id;
+                    
+                    // Refresh conversation list
+                    loadConversations();
+                    loadConversationStats();
+                    
+                    addMessageToChat('system', `✅ Started new conversation: ${newConversation.title}`);
+                } else {
+                    const error = await response.json();
+                    addMessageToChat('system', `❌ Failed to create conversation: ${error.detail || 'Unknown error'}`);
+                }
+            } catch (error) {
+                addMessageToChat('system', `❌ Error creating conversation: ${error.message}`);
+            }
+        }
+        
+        async function loadConversation(conversationId) {
+            if (!token) {
+                addMessageToChat('system', '🔐 Please login to load conversations.');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/conversations/${conversationId}`, {
+                    headers: getAuthHeaders()
+                });
+                
+                if (response.ok) {
+                    const conversation = await response.json();
+                    
+                    // Clear current chat
+                    const chatMessages = document.getElementById('chatMessages');
+                    chatMessages.innerHTML = '';
+                    
+                    // Set current conversation
+                    currentConversationId = conversationId;
+                    
+                    // Load messages
+                    if (conversation.messages && conversation.messages.length > 0) {
+                        conversation.messages.forEach(message => {
+                            addMessageToChat(message.role, message.content);
+                        });
+                        
+                        // Rebuild conversation context for AI
+                        conversationContext = conversation.messages
+                            .filter(msg => ['user', 'assistant'].includes(msg.role))
+                            .map(msg => ({ role: msg.role, content: msg.content }));
+                    } else {
+                        chatMessages.innerHTML = '<div class="text-center" style="color: var(--text-muted);">Start this conversation...</div>';
+                        conversationContext = [];
+                    }
+                    
+                    // Update UI
+                    loadConversations(); // Refresh to highlight active conversation
+                    addMessageToChat('system', `📂 Loaded conversation: ${conversation.title}`);
+                    
+                } else {
+                    addMessageToChat('system', '❌ Failed to load conversation.');
+                }
+            } catch (error) {
+                addMessageToChat('system', `❌ Error loading conversation: ${error.message}`);
+            }
+        }
+        
+        async function deleteConversation(conversationId) {
+            if (!token) {
+                addMessageToChat('system', '🔐 Please login to delete conversations.');
+                return;
+            }
+            
+            if (!confirm('Are you sure you want to delete this conversation? This action cannot be undone.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/conversations/${conversationId}`, {
+                    method: 'DELETE',
+                    headers: getAuthHeaders()
+                });
+                
+                if (response.ok) {
+                    // If this was the current conversation, clear it
+                    if (currentConversationId === conversationId) {
+                        clearChat();
+                        currentConversationId = null;
+                    }
+                    
+                    // Refresh conversation list
+                    loadConversations();
+                    loadConversationStats();
+                    
+                    addMessageToChat('system', '✅ Conversation deleted successfully.');
+                } else {
+                    addMessageToChat('system', '❌ Failed to delete conversation.');
+                }
+            } catch (error) {
+                addMessageToChat('system', `❌ Error deleting conversation: ${error.message}`);
+            }
+        }
+        
+        async function searchConversations() {
+            const searchInput = document.getElementById('conversationSearch');
+            const query = searchInput.value.trim();
+            
+            if (!token) {
+                updateConversationsList([], 'Please login to search conversations.');
+                return;
+            }
+            
+            if (!query) {
+                loadConversations(); // Show all conversations
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/conversations/search?q=${encodeURIComponent(query)}`, {
+                    headers: getAuthHeaders()
+                });
+                
+                if (response.ok) {
+                    const conversations = await response.json();
+                    updateConversationsList(conversations);
+                } else {
+                    updateConversationsList([], 'Search failed.');
+                }
+            } catch (error) {
+                updateConversationsList([], `Search error: ${error.message}`);
+            }
+        }
+        
+        async function loadConversationStats() {
+            if (!token) {
+                updateConversationStats({ total_conversations: 0, total_messages: 0 });
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/conversations/stats`, {
+                    headers: getAuthHeaders()
+                });
+                
+                if (response.ok) {
+                    const stats = await response.json();
+                    updateConversationStats(stats);
+                } else {
+                    updateConversationStats({ total_conversations: 0, total_messages: 0 });
+                }
+            } catch (error) {
+                updateConversationStats({ total_conversations: 0, total_messages: 0 });
+            }
+        }
+        
+        function updateConversationStats(stats) {
+            const totalConversations = document.getElementById('totalConversations');
+            const totalMessages = document.getElementById('totalMessages');
+            
+            if (totalConversations) {
+                totalConversations.textContent = stats.total_conversations || 0;
+            }
+            if (totalMessages) {
+                totalMessages.textContent = stats.total_messages || 0;
+            }
+        }
+        
+        // Save messages to current conversation automatically
+        async function saveMessageToConversation(role, content) {
+            if (!token || !currentConversationId) {
+                return; // No conversation to save to
+            }
+            
+            try {
+                await fetch(`${API_BASE}/api/conversations/${currentConversationId}/messages`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        role: role,
+                        content: content,
+                        metadata: {
+                            model: currentModel,
+                            timestamp: new Date().toISOString()
+                        }
+                    })
+                });
+                
+                // Refresh stats
+                if (conversationHistoryVisible) {
+                    loadConversationStats();
+                }
+            } catch (error) {
+                console.error('Failed to save message to conversation:', error);
             }
         }
         
