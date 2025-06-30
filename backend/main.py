@@ -7,6 +7,7 @@ import httpx
 import os
 from api.routes import files, tools, inference, models, health, auth
 from api.routes import auth_enhanced
+from api.routes import conversations
 from api.routes.health import track_connections_middleware
 from middleware.auth import JWTMiddleware
 from middleware.auth_enhanced import EnhancedJWTMiddleware
@@ -95,6 +96,10 @@ app = FastAPI(
         {
             "name": "auth",
             "description": "Authentication endpoints for user login and session management"
+        },
+        {
+            "name": "conversations",
+            "description": "Conversation and chat history management endpoints"
         }
     ],
     lifespan=lifespan
@@ -122,6 +127,7 @@ app.include_router(models.router, prefix="/api/models", tags=["models"])
 app.include_router(health.router, prefix="/api", tags=["health"])
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(auth_enhanced.router, prefix="/api/auth/v2", tags=["Enhanced Authentication"])
+app.include_router(conversations.router, tags=["conversations"])
 
 # Static file serving for frontend
 # In Docker, the frontend is copied to /app/frontend

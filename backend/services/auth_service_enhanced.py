@@ -15,10 +15,49 @@ from fastapi import HTTPException, status, Request
 from config.settings import settings
 from database.connection import get_db_session
 from database.models import User, UserSession, UserPreference, PreferenceKeys
-from models.user import (
-    UserLogin, UserResponse, TokenData, TokenResponse, 
-    AuthError, PermissionError
-)
+# Define classes locally since they were previously in models.user
+from pydantic import BaseModel
+
+class UserLogin(BaseModel):
+    username: str
+    password: str
+
+class UserResponse(BaseModel):
+    id: int
+    username: str
+    email: Optional[str]
+    full_name: Optional[str]
+    is_admin: bool
+    is_active: bool
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+class TokenData(BaseModel):
+    user_id: Optional[int] = None
+    username: Optional[str] = None
+    is_admin: Optional[bool] = False
+    exp: Optional[int] = None
+    jti: Optional[str] = None
+    type: Optional[str] = None
+
+class TokenResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+    expires_in: int
+    user: UserResponse
+
+class AuthError(Exception):
+    def __init__(self, message: str, status_code: int = 401):
+        self.message = message
+        self.status_code = status_code
+        super().__init__(self.message)
+
+class PermissionError(Exception):
+    def __init__(self, message: str, status_code: int = 403):
+        self.message = message
+        self.status_code = status_code
+        super().__init__(self.message)
 
 
 class EnhancedAuthService:
@@ -304,10 +343,12 @@ class EnhancedAuthService:
             user_response = UserResponse(
                 id=user.id,
                 username=user.username,
+                email=user.email,
                 full_name=user.full_name,
                 is_admin=user.is_admin,
-                created_at=user.created_at,
-                updated_at=user.updated_at
+                is_active=user.is_active,
+                created_at=user.created_at.isoformat() if user.created_at else None,
+                updated_at=user.updated_at.isoformat() if user.updated_at else None
             )
             
             return TokenResponse(
@@ -344,10 +385,12 @@ class EnhancedAuthService:
             user_response = UserResponse(
                 id=user.id,
                 username=user.username,
+                email=user.email,
                 full_name=user.full_name,
                 is_admin=user.is_admin,
-                created_at=user.created_at,
-                updated_at=user.updated_at
+                is_active=user.is_active,
+                created_at=user.created_at.isoformat() if user.created_at else None,
+                updated_at=user.updated_at.isoformat() if user.updated_at else None
             )
             
             return TokenResponse(

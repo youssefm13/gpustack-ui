@@ -4,11 +4,13 @@ SQLAlchemy database models for GPUStack UI.
 
 import json
 from datetime import datetime
-from typing import Dict, Any, Optional
+import uuid
+from typing import Dict, Any, Optional, List
 from sqlalchemy import (
     Column, Integer, String, Boolean, DateTime, Text, 
-    ForeignKey, UniqueConstraint, Index
+    ForeignKey, UniqueConstraint, Index, JSON
 )
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.hybrid import hybrid_property
 from database.connection import Base
@@ -43,6 +45,7 @@ class User(Base):
     # Relationships
     sessions = relationship("UserSession", back_populates="user", cascade="all, delete-orphan")
     preferences = relationship("UserPreference", back_populates="user", cascade="all, delete-orphan")
+    conversations = relationship("Conversation", back_populates="user", cascade="all, delete-orphan")
     
     # Indexes
     __table_args__ = (
@@ -226,6 +229,37 @@ class UserPreference(Base):
     
     def __repr__(self) -> str:
         return f"<UserPreference(user_id={self.user_id}, key='{self.preference_key}')>"
+
+
+class Conversation(Base):
+    """Model for storing conversation history."""
+
+    __tablename__ = "conversations"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    title = Column(String(255), nullable=True)
+    model_used = Column(String(100), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    
+    messages = relationship("Message", back_populates="conversation", cascade="all, delete-orphan")
+    user = relationship("User", back_populates="conversations")
+
+
+class Message(Base):
+    """Model for storing messages within a conversation."""
+
+    __tablename__ = "messages"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    conversation_id = Column(UUID(as_uuid=True), ForeignKey('conversations.id'), nullable=False)
+    role = Column(String(20), nullable=False)  # 'user', 'assistant', 'system'
+    content = Column(Text, nullable=False)
+    message_metadata = Column(JSON, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    conversation = relationship("Conversation", back_populates="messages")
 
 
 # Common preference keys (constants)
