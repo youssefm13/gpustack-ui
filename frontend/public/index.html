@@ -727,6 +727,18 @@ style="background-color: var(--accent-red); color: white; focus:ring-color: var(
             // Create new AbortController for this request
             currentAbortController = new AbortController();
 
+            // Auto-create conversation if none is active and we have a message
+            if (!currentConversationId) {
+                const newConversation = await createNewConversation(message);
+                if (!newConversation) {
+                    // If conversation creation failed, stop processing
+                    isStreaming = false;
+                    currentAbortController = null;
+                    updateButtonStates();
+                    return;
+                }
+            }
+
             // Add user message to chat
             addMessageToChat('user', message);
             input.value = '';
@@ -2893,13 +2905,11 @@ style="background-color: var(--accent-red); color: white; focus:ring-color: var(
                 const lastUpdate = new Date(conv.updated_at).toLocaleDateString();
                 
                 return `
-                    <div class="conversation-item p-3 mb-2 rounded cursor-pointer transition-colors ${
-                        isActive ? 'bg-opacity-20' : ''
-                    }" 
-                         style="background-color: ${isActive ? 'var(--accent-blue)' : 'var(--bg-tertiary)'}; border: 1px solid var(--border-color);" 
+                    <div class="conversation-item p-3 mb-2 rounded cursor-pointer transition-colors" 
+                         style="background-color: ${isActive ? 'var(--bg-quaternary)' : 'var(--bg-tertiary)'}; border: 1px solid ${isActive ? 'var(--accent-blue)' : 'var(--border-color)'};" 
                          onclick="loadConversation('${conv.id}')" 
                          onmouseover="this.style.backgroundColor='var(--bg-quaternary)'" 
-                         onmouseout="this.style.backgroundColor='${isActive ? 'var(--accent-blue)' : 'var(--bg-tertiary)'}'"
+                         onmouseout="this.style.backgroundColor='${isActive ? 'var(--bg-quaternary)' : 'var(--bg-tertiary)'}'"
                     >
                         <div class="flex justify-between items-start">
                             <div class="flex-1">
@@ -2929,18 +2939,82 @@ style="background-color: var(--accent-red); color: white; focus:ring-color: var(
             }).join('');
         }
         
-        async function createNewConversation() {
+        // Generate smart title from user message
+        function generateSmartTitle(userMessage) {
+            // Clean the message
+            const cleanMessage = userMessage.trim();
+            
+            // If message is too short, use it as is
+            if (cleanMessage.length <= 30) {
+                return cleanMessage;
+            }
+            
+            // Common question patterns
+            const questionPatterns = [
+                /^(how|what|when|where|why|who|which|can|could|would|should|will|is|are|am|do|does|did)\s+/i,
+                /^(explain|describe|tell me|help me|show me|teach me)\s+/i,
+                /^(create|write|generate|build|make|design)\s+/i,
+                /^(analyze|compare|review|summarize|evaluate)\s+/i
+            ];
+            
+            // Extract key topic words
+            const stopWords = new Set([
+                'a', 'an', 'and', 'are', 'as', 'at', 'be', 'by', 'for', 'from', 'has', 'he', 
+                'in', 'is', 'it', 'its', 'of', 'on', 'that', 'the', 'to', 'was', 'were', 
+                'will', 'with', 'you', 'your', 'i', 'me', 'my', 'we', 'us', 'our', 'they', 
+                'them', 'their', 'this', 'these', 'those', 'there', 'here', 'when', 'where',
+                'please', 'can', 'could', 'would', 'should'
+            ]);
+            
+            // Try to extract main topic
+            const words = cleanMessage.toLowerCase().split(/\s+/);
+            const importantWords = words.filter(word => 
+                word.length > 2 && 
+                !stopWords.has(word) && 
+                /^[a-zA-Z]/.test(word)
+            );
+            
+            // If we found a question pattern, create a question-based title
+            for (const pattern of questionPatterns) {
+                if (pattern.test(cleanMessage)) {
+                    const match = cleanMessage.match(pattern);
+                    if (match && importantWords.length > 0) {
+                        const firstWords = importantWords.slice(0, 3).join(' ');
+                        return `${match[0].trim()} ${firstWords}`.substring(0, 40);
+                    }
+                }
+            }
+            
+            // For statements, use first few important words
+            if (importantWords.length > 0) {
+                const title = importantWords.slice(0, 4).join(' ');
+                // Capitalize first letter
+                const capitalizedTitle = title.charAt(0).toUpperCase() + title.slice(1);
+                return capitalizedTitle.substring(0, 40);
+            }
+            
+            // Fallback: use first 40 characters with proper capitalization
+            const fallbackTitle = cleanMessage.charAt(0).toUpperCase() + cleanMessage.slice(1);
+            return fallbackTitle.substring(0, 40) + (cleanMessage.length > 40 ? '...' : '');
+        }
+        
+        async function createNewConversation(initialMessage = null) {
             if (!token) {
                 addMessageToChat('system', '🔐 Please login to create conversations.');
                 return;
             }
             
             try {
+                // Generate smart title based on initial message or use default
+                const title = initialMessage ? 
+                    generateSmartTitle(initialMessage) : 
+                    `New Chat ${new Date().toLocaleTimeString()}`;
+                
                 const response = await fetch(`${API_BASE}/api/conversations/`, {
                     method: 'POST',
                     headers: getAuthHeaders(),
                     body: JSON.stringify({
-                        title: `New Chat ${new Date().toLocaleString()}`,
+                        title: title,
                         model_used: currentModel
                     })
                 });
@@ -2956,13 +3030,19 @@ style="background-color: var(--accent-red); color: white; focus:ring-color: var(
                     loadConversations();
                     loadConversationStats();
                     
-                    addMessageToChat('system', `✅ Started new conversation: ${newConversation.title}`);
+                    if (!initialMessage) {
+                        addMessageToChat('system', `✅ Started new conversation: ${newConversation.title}`);
+                    }
+                    
+                    return newConversation;
                 } else {
                     const error = await response.json();
                     addMessageToChat('system', `❌ Failed to create conversation: ${error.detail || 'Unknown error'}`);
+                    return null;
                 }
             } catch (error) {
                 addMessageToChat('system', `❌ Error creating conversation: ${error.message}`);
+                return null;
             }
         }
         
