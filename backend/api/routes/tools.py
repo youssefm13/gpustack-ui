@@ -1,11 +1,18 @@
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, Depends
+from typing import Annotated
 from services.tavily_search import perform_web_search_async
+from middleware.auth_enhanced import get_current_user
+from models.user import User
 from api.schemas import SearchRequest, SearchResponse, ErrorResponse
 
 router = APIRouter()
 
 @router.post("/search", response_model=SearchResponse, responses={500: {"model": ErrorResponse}})
-async def web_search(request: SearchRequest, req: Request) -> SearchResponse:
+async def web_search(
+    request: SearchRequest, 
+    req: Request,
+    current_user: Annotated[User, Depends(get_current_user)]
+) -> SearchResponse:
     """
     Perform AI-enhanced web search with smart summaries.
     

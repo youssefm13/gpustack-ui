@@ -11,53 +11,12 @@ from passlib.context import CryptContext
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from fastapi import HTTPException, status, Request
+from fastapi import Request
 from config.settings import settings
 from database.connection import get_db_session
-from database.models import User, UserSession, UserPreference, PreferenceKeys
-# Define classes locally since they were previously in models.user
-from pydantic import BaseModel
-
-class UserLogin(BaseModel):
-    username: str
-    password: str
-
-class UserResponse(BaseModel):
-    id: int
-    username: str
-    email: Optional[str]
-    full_name: Optional[str]
-    is_admin: bool
-    is_active: bool
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
-
-class TokenData(BaseModel):
-    user_id: Optional[int] = None
-    username: Optional[str] = None
-    is_admin: Optional[bool] = False
-    exp: Optional[int] = None
-    jti: Optional[str] = None
-    type: Optional[str] = None
-
-class TokenResponse(BaseModel):
-    access_token: str
-    refresh_token: str
-    token_type: str = "bearer"
-    expires_in: int
-    user: UserResponse
-
-class AuthError(Exception):
-    def __init__(self, message: str, status_code: int = 401):
-        self.message = message
-        self.status_code = status_code
-        super().__init__(self.message)
-
-class PermissionError(Exception):
-    def __init__(self, message: str, status_code: int = 403):
-        self.message = message
-        self.status_code = status_code
-        super().__init__(self.message)
+from database.models import User, UserSession
+# Import models from models.user
+from models.user import UserLogin, UserResponse, TokenData, TokenResponse, AuthError, PermissionError
 
 
 class EnhancedAuthService:
@@ -494,6 +453,117 @@ class EnhancedAuthService:
         """Check if user has admin permissions."""
         if not user.is_admin:
             raise PermissionError("Admin access required")
+    
+    # Helper methods for token creation without database
+    def _create_access_token_payload(self, user: User) -> str:
+        """Create access token without database session."""
+        now = datetime.utcnow()
+        expire = now + timedelta(minutes=self.access_token_expire_minutes)
+        jti = str(uuid.uuid4())
+        
+        token_data = {
+            "user_id": user.id,
+            "username": user.username,
+            "is_admin": user.is_admin,
+            "exp": int(expire.timestamp()),
+            "iat": int(now.timestamp()),
+            "jti": jti,
+            "type": "access"
+        }
+        
+        return jwt.encode(token_data, self.secret_key, algorithm=self.algorithm)
+    
+    def _create_refresh_token_payload(self, user: User) -> str:
+        """Create refresh token without database session."""
+        now = datetime.utcnow()
+        expire = now + timedelta(days=self.refresh_token_expire_days)
+        jti = str(uuid.uuid4())
+        
+        token_data = {
+            "user_id": user.id,
+            "username": user.username,
+            "exp": int(expire.timestamp()),
+            "iat": int(now.timestamp()),
+            "jti": jti,
+            "type": "refresh"
+        }
+        
+        return jwt.encode(token_data, self.secret_key, algorithm=self.algorithm)
+    
+    def _verify_token_payload(self, token: str) -> TokenData:
+        """Verify token without database session."""
+        try:
+            payload = jwt.decode(token, self.secret_key, algorithms=[self.algorithm])
+            return TokenData(**payload)
+        except JWTError:
+            raise AuthError("Invalid token", 401)
+    
+    # Backwards compatibility methods for testing (no database required)
+    def create_access_token_sync(self, user: User) -> str:
+        """Create access token without database session (for testing)."""
+        return self._create_access_token_payload(user)
+    
+    def create_refresh_token_sync(self, user: User) -> str:
+        """Create refresh token without database session (for testing)."""
+        return self._create_refresh_token_payload(user)
+    
+    def verify_token_sync(self, token: str) -> TokenData:
+        """Verify token without database session (for testing)."""
+        return self._verify_token_payload(token)
+    
+    def logout_user_sync(self, token: str) -> bool:
+        """Simple logout for testing (doesn't check database)."""
+        try:
+            self._verify_token_payload(token)
+            return True
+        except AuthError:
+            return False
+    
+    async def get_active_sessions(self) -> List[Dict[str, Any]]:
+        """Get all active sessions for admin interface."""
+        db = await get_db_session()
+        
+        try:
+            query = select(UserSession).where(
+                UserSession.expires_at > datetime.utcnow()
+            ).order_by(UserSession.last_accessed.desc())
+            
+            result = await db.execute(query)
+            sessions = result.scalars().all()
+            
+            return [
+                {
+                    "jti": session.jti,
+                    "user_id": session.user_id,
+                    "token_type": session.token_type,
+                    "expires_at": session.expires_at.isoformat(),
+                    "last_accessed": session.last_accessed.isoformat() if session.last_accessed else None,
+                    "ip_address": session.ip_address,
+                    "user_agent": session.user_agent
+                }
+                for session in sessions
+            ]
+            
+        finally:
+            await db.close()
+    
+    async def get_gpustack_users(self) -> List[User]:
+        """Get all users from both local database and GPUStack."""
+        db = await get_db_session()
+        
+        try:
+            # Get local users
+            query = select(User).where(User.is_active == True)
+            result = await db.execute(query)
+            local_users = list(result.scalars().all())
+            
+            # Optionally fetch from GPUStack and sync (for now just return local users)
+            # This could be extended to sync with GPUStack API
+            
+            return local_users
+            
+        finally:
+            await db.close()
 
 
 # Global enhanced auth service instance

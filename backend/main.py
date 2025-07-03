@@ -9,7 +9,6 @@ from api.routes import files, tools, inference, models, health, auth
 from api.routes import auth_enhanced
 from api.routes import conversations
 from api.routes.health import track_connections_middleware
-from middleware.auth import JWTMiddleware
 from middleware.auth_enhanced import EnhancedJWTMiddleware
 from database.connection import initialize_database, close_database
 from api import schemas
@@ -118,8 +117,8 @@ app.add_middleware(
 # Add connection tracking middleware
 app.middleware("http")(track_connections_middleware)
 
-# Add JWT middleware
-app.add_middleware(JWTMiddleware)
+# Add Enhanced JWT middleware
+app.add_middleware(EnhancedJWTMiddleware)
 
 app.include_router(files.router, prefix="/api/files", tags=["files"])
 app.include_router(tools.router, prefix="/api/tools", tags=["tools"])

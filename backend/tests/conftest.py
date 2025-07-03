@@ -11,6 +11,7 @@ from httpx import AsyncClient
 # Set test environment
 os.environ["TESTING"] = "1"
 os.environ["GPUSTACK_API_BASE"] = "http://localhost:8080"
+os.environ["GPUSTACK_API_TOKEN"] = "test-gpustack-token"
 os.environ["TAVILY_API_KEY"] = "test-key"
 
 from main import app
@@ -59,22 +60,25 @@ def mock_gpustack_response():
 @pytest.fixture
 def mock_user_data():
     """Mock user data for authentication tests."""
-    return {
-        "id": 1,
-        "username": "testuser",
-        "name": "Test User",
-        "email": "test@example.com",
-        "is_admin": False
-    }
+    from models.user import User
+    from datetime import datetime, timezone
+    return User(
+        id=1,
+        username="testuser",
+        full_name="Test User",
+        email="test@example.com",
+        is_admin=False,
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc)
+    )
 
 
 @pytest.fixture
 def auth_headers(mock_user_data):
     """Create authentication headers for testing."""
-    from services.auth_service import AuthService
+    from services.auth_service_enhanced import enhanced_auth_service
     
-    auth_service = AuthService()
-    token = auth_service.create_access_token(mock_user_data)
+    token = enhanced_auth_service.create_access_token_sync(mock_user_data)
     
     return {"Authorization": f"Bearer {token}"}
 

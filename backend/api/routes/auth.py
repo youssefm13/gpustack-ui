@@ -6,12 +6,13 @@ from fastapi import APIRouter, HTTPException, status, Depends
 from fastapi.security import HTTPAuthorizationCredentials
 from typing import List, Annotated
 
-from services.auth_service import auth_service
-from middleware.auth import get_current_user, get_current_admin_user, security
+from services.auth_service_enhanced import enhanced_auth_service
+from middleware.auth_enhanced import get_current_user, get_current_admin_user, security
 from models.user import (
-    UserLogin, TokenResponse, RefreshTokenRequest, UserResponse, 
-    User, AuthError, PermissionError
+    UserLogin, TokenResponse, UserResponse, 
+    AuthError
 )
+from database.models import User
 
 
 router = APIRouter(tags=["Authentication"])
@@ -25,7 +26,7 @@ async def login(login_data: UserLogin):
     Returns JWT access and refresh tokens on successful authentication.
     """
     try:
-        token_response = await auth_service.authenticate_user(login_data)
+        token_response = await enhanced_auth_service.authenticate_user(login_data)
         return token_response
     except AuthError as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)
@@ -45,7 +46,7 @@ async def logout(
         )
     
     token = credentials.credentials
-    success = auth_service.logout_user(token)
+    success = await enhanced_auth_service.logout_user(token)
     
     if success:
         return {"message": "Successfully logged out"}
@@ -57,12 +58,20 @@ async def logout(
 
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh_token(refresh_request: RefreshTokenRequest):
+async def refresh_token(
+    credentials: Annotated[HTTPAuthorizationCredentials, Depends(security)]
+):
     """
     Refresh access token using refresh token.
     """
+    if not credentials:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required"
+        )
+    
     try:
-        token_response = await auth_service.refresh_access_token(refresh_request.refresh_token)
+        token_response = await enhanced_auth_service.refresh_access_token(credentials.credentials)
         return token_response
     except AuthError as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)
@@ -93,7 +102,7 @@ async def list_users(
     List all users (admin only).
     """
     try:
-        users = await auth_service.get_gpustack_users()
+        users = await enhanced_auth_service.get_gpustack_users()
         return [
             UserResponse(
                 id=user.id,
@@ -116,19 +125,8 @@ async def get_active_sessions(
     """
     Get active user sessions (admin only).
     """
-    # Clean up expired sessions first
-    auth_service.cleanup_expired_sessions()
-    
-    sessions = []
-    for jti, session in auth_service.active_sessions.items():
-        sessions.append({
-            "jti": jti,
-            "user_id": session["user_id"],
-            "username": session["username"],
-            "token_type": session["token_type"],
-            "expires_at": session["expires_at"].isoformat()
-        })
-    
+    # Get active sessions from enhanced service
+    sessions = await enhanced_auth_service.get_active_sessions()
     return {
         "active_sessions": sessions,
         "total_count": len(sessions)
@@ -142,10 +140,9 @@ async def cleanup_expired_sessions(
     """
     Manually cleanup expired sessions and tokens (admin only).
     """
-    auth_service.cleanup_expired_sessions()
+    cleaned_count = await enhanced_auth_service.cleanup_expired_sessions()
     
     return {
         "message": "Expired sessions cleaned up",
-        "remaining_sessions": len(auth_service.active_sessions),
-        "blacklisted_tokens": len(auth_service.blacklisted_tokens)
+        "cleaned_sessions": cleaned_count
     }

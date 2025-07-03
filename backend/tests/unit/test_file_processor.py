@@ -7,248 +7,143 @@ import os
 from unittest.mock import patch, MagicMock
 from io import BytesIO
 
-from services.file_processor import EnhancedFileProcessor
+from services.file_processor import EnhancedFileProcessor, file_processor
+from fastapi import UploadFile
 
 
 class TestFileProcessor:
     """Test cases for FileProcessor."""
 
     def test_init(self):
-        """Test FileProcessor initialization."""
-        processor = FileProcessor()
+        """Test EnhancedFileProcessor initialization."""
+        processor = EnhancedFileProcessor()
         
-        assert processor.max_file_size_mb == 50
-        assert processor.max_words == 5000
+        assert processor.max_content_length == 12000
+        assert processor.max_summary_length == 2000
 
-    def test_get_file_type_pdf(self):
-        """Test file type detection for PDF."""
-        processor = FileProcessor()
+    def test_looks_like_header_detection(self):
+        """Test header detection functionality."""
+        processor = EnhancedFileProcessor()
         
-        file_type = processor.get_file_type("document.pdf")
-        
-        assert file_type == "pdf"
+        # Test various header patterns
+        assert processor._looks_like_header("1. Introduction") is True
+        assert processor._looks_like_header("CHAPTER ONE") is True
+        assert processor._looks_like_header("# Header") is True
+        assert processor._looks_like_header("Summary:") is True
+        assert processor._looks_like_header("regular text") is False
 
-    def test_get_file_type_docx(self):
-        """Test file type detection for DOCX."""
-        processor = FileProcessor()
+    def test_determine_header_level(self):
+        """Test header level determination."""
+        processor = EnhancedFileProcessor()
         
-        file_type = processor.get_file_type("document.docx")
-        
-        assert file_type == "docx"
+        assert processor._determine_header_level("# Header") == 1
+        assert processor._determine_header_level("## Header") == 2
+        assert processor._determine_header_level("### Header") == 3
+        assert processor._determine_header_level("CAPS HEADER") == 1
+        assert processor._determine_header_level("Regular header") == 2
 
-    def test_get_file_type_txt(self):
-        """Test file type detection for text files."""
-        processor = FileProcessor()
+    def test_extract_heading_level(self):
+        """Test heading level extraction from Word styles."""
+        processor = EnhancedFileProcessor()
         
-        file_type = processor.get_file_type("document.txt")
-        
-        assert file_type == "txt"
+        assert processor._extract_heading_level("Heading 1") == 1
+        assert processor._extract_heading_level("Heading 2") == 2
+        assert processor._extract_heading_level("Title") == 1
+        assert processor._extract_heading_level("Normal") == 2
 
-    def test_get_file_type_unsupported(self):
-        """Test file type detection for unsupported files."""
-        processor = FileProcessor()
+    def test_create_metadata_summary(self):
+        """Test metadata summary creation."""
+        processor = EnhancedFileProcessor()
         
-        file_type = processor.get_file_type("document.xyz")
+        metadata = {"page_count": 5, "word_count": 1000, "title": "Test Doc"}
+        structure = {"headers": [{}, {}], "tables": [{}]}
         
-        assert file_type == "unsupported"
+        summary = processor._create_metadata_summary(metadata, structure)
+        
+        assert "5 pages" in summary
+        assert "1000 words" in summary
+        assert "Title: Test Doc" in summary
+        assert "2 sections" in summary
+        assert "1 tables" in summary
 
-    def test_validate_file_size_valid(self):
-        """Test file size validation for valid file."""
-        processor = FileProcessor()
+    def test_truncate_by_paragraphs(self):
+        """Test paragraph-based truncation."""
+        processor = EnhancedFileProcessor()
         
-        # Create a small test file
-        with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
-            tmp_file.write(b"test content")
-            tmp_file.flush()
-            
-            is_valid = processor.validate_file_size(tmp_file.name)
-            
-            assert is_valid is True
-            
-        os.unlink(tmp_file.name)
-
-    def test_validate_file_size_too_large(self):
-        """Test file size validation for oversized file."""
-        processor = FileProcessor()
+        long_text = "\n\n".join([f"Paragraph {i} content." for i in range(20)])
+        truncated = processor._truncate_by_paragraphs(long_text, 100)
         
-        # Mock file size to be larger than limit
-        with patch('os.path.getsize') as mock_getsize:
-            mock_getsize.return_value = 60 * 1024 * 1024  # 60MB
-            
-            is_valid = processor.validate_file_size("fake_file.pdf")
-            
-            assert is_valid is False
-
-    def test_extract_text_from_txt(self):
-        """Test text extraction from plain text file."""
-        processor = FileProcessor()
-        content = "This is a test document content."
+        assert len(truncated) <= 150  # Allow some margin
+        assert "Paragraph 1" in truncated
         
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as tmp_file:
-            tmp_file.write(content)
-            tmp_file.flush()
-            
-            extracted_text = processor.extract_text_from_txt(tmp_file.name)
-            
-            assert extracted_text == content
-            
-        os.unlink(tmp_file.name)
-
-    @patch('pdfplumber.open')
-    def test_extract_text_from_pdf_success(self, mock_pdf_open):
-        """Test successful text extraction from PDF."""
-        processor = FileProcessor()
+    def test_extract_headers_from_text(self):
+        """Test header extraction from text."""
+        processor = EnhancedFileProcessor()
         
-        # Mock PDF document
-        mock_page = MagicMock()
-        mock_page.extract_text.return_value = "PDF content"
+        text = "1. Introduction\nSome content\nCONCLUSION\nMore content\n# Summary"
+        headers = processor._extract_headers_from_text(text)
         
-        mock_pdf = MagicMock()
-        mock_pdf.__enter__.return_value.pages = [mock_page]
-        mock_pdf_open.return_value = mock_pdf
+        assert "1. Introduction" in headers
+        assert "CONCLUSION" in headers
+        assert "# Summary" in headers
         
-        extracted_text = processor.extract_text_from_pdf("test.pdf")
+    def test_optimize_content_for_context_small(self):
+        """Test content optimization for small content."""
+        processor = EnhancedFileProcessor()
         
-        assert extracted_text == "PDF content"
-
-    @patch('pdfplumber.open')
-    def test_extract_text_from_pdf_failure(self, mock_pdf_open):
-        """Test PDF text extraction failure."""
-        processor = FileProcessor()
+        small_content = "This is a small document."
+        optimized = processor._optimize_content_for_context(small_content, {}, {})
         
-        mock_pdf_open.side_effect = Exception("PDF error")
+        assert optimized == small_content
         
-        extracted_text = processor.extract_text_from_pdf("test.pdf")
+    def test_optimize_content_for_context_large(self):
+        """Test content optimization for large content."""
+        processor = EnhancedFileProcessor()
         
-        assert extracted_text == ""
-
-    @patch('docx.Document')
-    def test_extract_text_from_docx_success(self, mock_document):
-        """Test successful text extraction from DOCX."""
-        processor = FileProcessor()
+        # Create content larger than max_content_length
+        large_content = " ".join(["word"] * 3000)
+        metadata = {"word_count": 3000}
+        structure = {}
         
-        # Mock DOCX document
-        mock_paragraph = MagicMock()
-        mock_paragraph.text = "DOCX content"
+        optimized = processor._optimize_content_for_context(large_content, structure, metadata)
         
-        mock_doc = MagicMock()
-        mock_doc.paragraphs = [mock_paragraph]
-        mock_document.return_value = mock_doc
+        assert len(optimized) <= processor.max_content_length + 500  # Allow some margin
+        assert "3000 words" in optimized
         
-        extracted_text = processor.extract_text_from_docx("test.docx")
+    @pytest.mark.asyncio
+    async def test_process_text_file(self):
+        """Test processing of a text file."""
+        from io import StringIO
         
-        assert extracted_text == "DOCX content"
-
-    @patch('docx.Document')
-    def test_extract_text_from_docx_failure(self, mock_document):
-        """Test DOCX text extraction failure."""
-        processor = FileProcessor()
+        processor = EnhancedFileProcessor()
         
-        mock_document.side_effect = Exception("DOCX error")
+        # Create mock UploadFile
+        content = "This is a test document.\n\nIt has multiple paragraphs."
+        mock_file = MagicMock(spec=UploadFile)
+        mock_file.filename = "test.txt"
+        mock_file.content_type = "text/plain"
+        mock_file.read.return_value = content.encode('utf-8')
         
-        extracted_text = processor.extract_text_from_docx("test.docx")
+        result = await processor._process_text(mock_file)
         
-        assert extracted_text == ""
-
-    def test_analyze_structure_basic(self):
-        """Test basic structure analysis."""
-        processor = FileProcessor()
-        text = "This is a test document with multiple words."
+        assert "content" in result
+        assert "metadata" in result
+        assert "structure" in result
+        assert result["content"] == content
+        # Count words in the content: "This is a test document. It has multiple paragraphs."
+        expected_word_count = len(content.split())
+        assert result["metadata"]["word_count"] == expected_word_count
         
-        structure_info = processor.analyze_structure(text)
+    def test_sandwich_truncation(self):
+        """Test sandwich approach for truncation."""
+        processor = EnhancedFileProcessor()
         
-        assert structure_info["word_count"] == 8
-        assert structure_info["has_headers"] is False
-        assert structure_info["has_tables"] is False
-
-    def test_analyze_structure_with_headers(self):
-        """Test structure analysis with headers."""
-        processor = FileProcessor()
-        text = "# Header 1\nSome content\n## Header 2\nMore content"
+        # Create content with clear beginning, middle, and end
+        content = "Beginning content. " * 100 + "Middle content. " * 100 + "End content. " * 100
         
-        structure_info = processor.analyze_structure(text)
+        truncated = processor._truncate_with_sandwich_approach(content, 200)
         
-        assert structure_info["has_headers"] is True
-
-    def test_analyze_structure_with_tables(self):
-        """Test structure analysis with tables."""
-        processor = FileProcessor()
-        text = "Some content\n| Column 1 | Column 2 |\n|----------|----------|\n| Data 1   | Data 2   |"
-        
-        structure_info = processor.analyze_structure(text)
-        
-        assert structure_info["has_tables"] is True
-
-    def test_clean_and_optimize_text_basic(self):
-        """Test basic text cleaning and optimization."""
-        processor = FileProcessor()
-        text = "  This is a test   document.  \n\n  With extra   spaces.  "
-        
-        cleaned_text = processor.clean_and_optimize_text(text)
-        
-        assert "This is a test document." in cleaned_text
-        assert "With extra spaces." in cleaned_text
-
-    def test_clean_and_optimize_text_truncation(self):
-        """Test text truncation for long documents."""
-        processor = FileProcessor()
-        long_text = " ".join(["word"] * 6000)  # More than max_words
-        
-        cleaned_text = processor.clean_and_optimize_text(long_text)
-        
-        word_count = len(cleaned_text.split())
-        assert word_count <= processor.max_words
-
-    def test_extract_metadata_basic(self):
-        """Test basic metadata extraction."""
-        processor = FileProcessor()
-        text = "Document Title\nBy Author Name\nThis is the content."
-        
-        metadata = processor.extract_metadata(text, "test.txt")
-        
-        assert metadata["filename"] == "test.txt"
-        assert metadata["content_type"] == "text/plain"
-
-    async def test_process_file_txt_success(self):
-        """Test successful processing of text file."""
-        processor = FileProcessor()
-        content = "This is a test document content."
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as tmp_file:
-            tmp_file.write(content)
-            tmp_file.flush()
-            
-            result = await processor.process_file(tmp_file.name)
-            
-            assert result["success"] is True
-            assert result["content"] == content
-            assert result["filename"] == os.path.basename(tmp_file.name)
-            assert "structure_info" in result
-            assert "metadata" in result
-            
-        os.unlink(tmp_file.name)
-
-    async def test_process_file_unsupported(self):
-        """Test processing of unsupported file type."""
-        processor = FileProcessor()
-        
-        with tempfile.NamedTemporaryFile(suffix='.xyz', delete=False) as tmp_file:
-            tmp_file.write(b"content")
-            tmp_file.flush()
-            
-            result = await processor.process_file(tmp_file.name)
-            
-            assert result["success"] is False
-            assert "Unsupported file type" in result["error"]
-            
-        os.unlink(tmp_file.name)
-
-    async def test_process_file_too_large(self):
-        """Test processing of oversized file."""
-        processor = FileProcessor()
-        
-        with patch.object(processor, 'validate_file_size', return_value=False):
-            result = await processor.process_file("fake_large_file.txt")
-            
-            assert result["success"] is False
-            assert "File too large" in result["error"]
+        assert "Beginning content" in truncated
+        assert "End content" in truncated
+        assert "middle sections omitted" in truncated.lower()
+        assert len(truncated) <= 400  # Allow some margin

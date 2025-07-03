@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 
 from database.connection import get_database
 from services.conversation_service import ConversationService
-from middleware.auth_enhanced import get_current_user_enhanced
+from middleware.auth_enhanced import get_current_user
 from database.models import User
 
 
@@ -56,7 +56,7 @@ class MessageResponse(BaseModel):
 @router.post("/", response_model=ConversationResponse)
 async def create_conversation(
     data: ConversationCreate,
-    current_user: User = Depends(get_current_user_enhanced),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_database)
 ):
     """Create a new conversation."""
@@ -73,7 +73,7 @@ async def create_conversation(
 async def get_conversations(
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
-    current_user: User = Depends(get_current_user_enhanced),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_database)
 ):
     """Get all conversations for the current user."""
@@ -90,7 +90,7 @@ async def get_conversations(
 async def search_conversations(
     q: str = Query(..., description="Search query"),
     limit: int = Query(20, ge=1, le=50),
-    current_user: User = Depends(get_current_user_enhanced),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_database)
 ):
     """Search conversations by title or content."""
@@ -105,7 +105,7 @@ async def search_conversations(
 
 @router.get("/stats")
 async def get_conversation_stats(
-    current_user: User = Depends(get_current_user_enhanced),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_database)
 ):
     """Get conversation statistics for the current user."""
@@ -117,7 +117,7 @@ async def get_conversation_stats(
 @router.get("/{conversation_id}", response_model=ConversationResponse)
 async def get_conversation(
     conversation_id: str,
-    current_user: User = Depends(get_current_user_enhanced),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_database)
 ):
     """Get a specific conversation with messages."""
@@ -137,7 +137,7 @@ async def get_conversation(
 async def update_conversation(
     conversation_id: str,
     data: ConversationUpdate,
-    current_user: User = Depends(get_current_user_enhanced),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_database)
 ):
     """Update a conversation."""
@@ -158,7 +158,7 @@ async def update_conversation(
 @router.delete("/{conversation_id}")
 async def delete_conversation(
     conversation_id: str,
-    current_user: User = Depends(get_current_user_enhanced),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_database)
 ):
     """Delete a conversation."""
@@ -178,7 +178,7 @@ async def delete_conversation(
 async def add_message(
     conversation_id: str,
     data: MessageCreate,
-    current_user: User = Depends(get_current_user_enhanced),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_database)
 ):
     """Add a message to a conversation."""
@@ -202,7 +202,7 @@ async def get_messages(
     conversation_id: str,
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
-    current_user: User = Depends(get_current_user_enhanced),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_database)
 ):
     """Get messages from a conversation."""
@@ -221,7 +221,7 @@ async def get_messages(
 async def export_conversation(
     conversation_id: str,
     format: str = Query("json", description="Export format: json or text"),
-    current_user: User = Depends(get_current_user_enhanced),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_database)
 ):
     """Export a conversation."""

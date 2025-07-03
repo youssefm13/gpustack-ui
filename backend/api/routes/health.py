@@ -1,7 +1,6 @@
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Request
 from datetime import datetime
 import psutil
-import asyncio
 from api.schemas import HealthResponse, DetailedMetricsResponse, ErrorResponse
 
 router = APIRouter()

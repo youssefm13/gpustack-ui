@@ -1,5 +1,8 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+from typing import Annotated
 from services.file_processor import file_processor, process_file
+from middleware.auth_enhanced import get_current_user
+from models.user import User
 import logging
 from api.schemas import FileUploadResponse, LegacyFileUploadResponse, ErrorResponse
 
@@ -7,7 +10,10 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 @router.post("/upload", response_model=FileUploadResponse, responses={413: {"model": ErrorResponse}, 500: {"model": ErrorResponse}})
-async def upload_file(file: UploadFile = File(...)) -> FileUploadResponse:
+async def upload_file(
+    file: UploadFile = File(...),
+    current_user: Annotated[User, Depends(get_current_user)] = None
+) -> FileUploadResponse:
     """
     Upload and process documents with AI-optimized content extraction.
     
@@ -71,7 +77,10 @@ async def upload_file(file: UploadFile = File(...)) -> FileUploadResponse:
         raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
 
 @router.post("/upload/legacy", response_model=LegacyFileUploadResponse, responses={500: {"model": ErrorResponse}})
-async def upload_file_legacy(file: UploadFile = File(...)) -> LegacyFileUploadResponse:
+async def upload_file_legacy(
+    file: UploadFile = File(...),
+    current_user: Annotated[User, Depends(get_current_user)] = None
+) -> LegacyFileUploadResponse:
     """
     Legacy file upload endpoint for backward compatibility.
     

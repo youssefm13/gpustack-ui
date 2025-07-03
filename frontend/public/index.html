@@ -1541,9 +1541,7 @@ style="background-color: var(--accent-red); color: white; focus:ring-color: var(
         // Load available models from GPUStack
         async function loadAvailableModels() {
             try {
-                const response = await fetch(`${API_BASE}/api/models`, {
-                    headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-                });
+                const response = await fetch(`${API_BASE}/api/models`);
                 if (response.ok) {
                     const data = await response.json();
                     availableModels = data.models || [];

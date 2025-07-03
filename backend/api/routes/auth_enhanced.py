@@ -5,21 +5,21 @@ Enhanced authentication API routes with database integration.
 from fastapi import APIRouter, HTTPException, status, Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List, Annotated, Optional
+from typing import List, Annotated
 
 from database.connection import get_database
 from services.auth_service_enhanced import enhanced_auth_service
 from middleware.auth_enhanced import (
     get_current_user_enhanced, get_current_admin_user_enhanced, 
-    security, get_current_user_optional_enhanced
+    security
 )
 from models.user import (
     UserLogin, TokenResponse, RefreshTokenRequest, UserResponse, 
-    AuthError, PermissionError
+    AuthError
 )
 from database.models import User as DBUser, UserSession
 from api.schemas import (
-    UserCreateRequest, UserUpdateRequest, SessionResponse,
+    UserCreateRequest, SessionResponse,
     UserPreferenceRequest, UserPreferenceResponse
 )
 

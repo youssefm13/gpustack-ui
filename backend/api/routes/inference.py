@@ -1,13 +1,19 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import StreamingResponse
+from typing import Annotated
 from services.inference_client import send_to_gpustack, stream_from_gpustack
+from middleware.auth_enhanced import get_current_user
+from models.user import User
 import json
 from api.schemas import InferenceRequest, InferenceResponse, ErrorResponse
 
 router = APIRouter()
 
 @router.post("/infer", response_model=InferenceResponse, responses={500: {"model": ErrorResponse}})
-async def infer(request: InferenceRequest) -> InferenceResponse:
+async def infer(
+    request: InferenceRequest,
+    current_user: Annotated[User, Depends(get_current_user)]
+) -> InferenceResponse:
     """
     Generate text completion using LLM models.
     
@@ -22,7 +28,7 @@ async def infer(request: InferenceRequest) -> InferenceResponse:
     """
     try:
         # Convert Pydantic model to dict
-        prompt_data = request.dict()
+        prompt_data = request.model_dump()
         
         # Log the request for debugging
         print(f"Inference request: {prompt_data}")
@@ -46,7 +52,10 @@ async def infer(request: InferenceRequest) -> InferenceResponse:
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/stream", responses={500: {"model": ErrorResponse}})
-async def stream_infer(request: InferenceRequest):
+async def stream_infer(
+    request: InferenceRequest,
+    current_user: Annotated[User, Depends(get_current_user)]
+):
     """
     Generate streaming text completion using LLM models.
     
@@ -60,7 +69,7 @@ async def stream_infer(request: InferenceRequest):
     """
     try:
         # Convert Pydantic model to dict and enable streaming
-        prompt_data = request.dict()
+        prompt_data = request.model_dump()
         prompt_data["stream"] = True
         
         print(f"Streaming inference request: {prompt_data}")

@@ -143,3 +143,9 @@ async def get_current_admin_with_db(
 ) -> tuple[DBUser, AsyncSession]:
     """Get current admin user and database session together."""
     return admin_user, db
+
+
+# Aliases for backwards compatibility
+get_current_user = get_current_user_enhanced
+get_current_admin_user = get_current_admin_user_enhanced
+get_current_user_optional = get_current_user_optional_enhanced
