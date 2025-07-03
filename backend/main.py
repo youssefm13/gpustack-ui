@@ -106,9 +106,10 @@ app = FastAPI(
 )
 
 # Add CORS middleware
+from config.settings import settings
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with specific origins
+    allow_origins=settings.cors_origins if not settings.is_development else ["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

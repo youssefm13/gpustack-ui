@@ -16,11 +16,39 @@ This guide provides comprehensive instructions for deploying GPUStack UI v2.5.0 
 - Domain name configured (for SSL deployment)
 - Minimum 4GB RAM, 2 CPU cores recommended
 
+## 🔧 Configuration System
+
+### Modern Pydantic-Based Configuration
+
+GPUStack UI v2.5.0 uses a modern Pydantic-based configuration system that provides:
+
+- **Type Safety**: All configuration values are validated and typed
+- **Environment Variable Support**: Automatically reads from environment variables
+- **Default Values**: Sensible defaults for development and production
+- **Multiple Sources**: Supports direct environment variables, .env files, and defaults
+- **Environment-Specific Overrides**: Different settings for development, testing, and production
+
+### Configuration Priority (Highest to Lowest)
+
+1. **Direct Environment Variables** (e.g., `export JWT_SECRET_KEY=...`)
+2. **Values from .env files** (loaded automatically by the application)
+3. **Default values** defined in the Pydantic settings model
+
+### Why .env Files with Pydantic?
+
+While the application uses Pydantic BaseSettings for type safety and validation, `.env` files are still the recommended approach because:
+
+- **Convenience**: Manage all configuration in one file instead of exporting dozens of environment variables
+- **Docker Integration**: Docker Compose automatically loads `.env` files
+- **Security**: Sensitive values stay in `.env` files that aren't committed to version control
+- **Flexibility**: You can still override any value with direct environment variables if needed
+- **Industry Standard**: This is the standard practice for containerized applications
+
 ## 🔧 Configuration Requirements
 
 ### Required API Keys and Settings
 
-GPUStack UI v2.5.0 uses environment variables for configuration. You need to configure the following:
+You need to configure the following environment variables (typically via `.env` files):
 
 #### 1. GPUStack API Configuration (Required)
 ```env
