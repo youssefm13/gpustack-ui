@@ -9,6 +9,7 @@ services:
       - ENV=development
     volumes:
       - ./.env:/app/.env:ro
+      - ./.env.local:/app/.env.local:ro
     # Multiple workers for better concurrency
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --workers 3
     # Resource limits for better stability

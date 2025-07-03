@@ -1,3 +1,4 @@
+# Python
 __pycache__/
 *.pyc
 *.pyo
@@ -18,3 +19,55 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+
+# Environment files (SECURITY)
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.prod
+.env.dev
+.env.staging
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+backend/gpustack_ui.db
+backend/test_gpustack_ui.db
+
+# Logs
+logs/
+*.log
+backend/backend_debug.log
+
+# Uploads and temporary files
+uploads/
+temp/
+tmp/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# Node.js (if using npm/yarn for frontend tools)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

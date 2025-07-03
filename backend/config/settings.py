@@ -7,8 +7,10 @@ from pydantic_settings import BaseSettings
 from pydantic import Field
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
-load_dotenv()
+# Load environment variables from .env files
+# Load .env first (template), then .env.local (local overrides)
+load_dotenv(".env")
+load_dotenv(".env.local", override=True)
 
 
 class Settings(BaseSettings):
