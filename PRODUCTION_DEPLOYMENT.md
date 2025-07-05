@@ -1,33 +1,41 @@
-# GPUStack UI v2.5.0 - Production Deployment Guide
+# GPUStack UI v2.5.4 - Production Deployment Guide
 
-This guide provides comprehensive instructions for deploying GPUStack UI v2.5.0 to production environments.
+This guide provides comprehensive instructions for deploying GPUStack UI v2.5.4 to production environments.
 
-## 🚀 What's New in v2.5.0
+## 🚀 What's New in v2.5.4
 
+- **Local Tailwind CSS Build**: All CSS assets are now built and served locally—no CDN required
+- **CSS Cleanup**: Removed legacy and unused CSS files. All styles served from `output.css`
+- **Improved Dev Workflow**: Added scripts for building and watching Tailwind CSS
 - **OCR Support**: Full Tesseract OCR integration for image text extraction
 - **Enhanced File Processing**: Support for image files with automatic text extraction
 - **Improved Configuration Management**: Environment-based configuration system
 - **Production-Ready Features**: Enhanced security, logging, and performance optimizations
-- **Local Tailwind CSS Build**: All CSS assets are now built and served locally—no CDN required
 
 ## 📋 Prerequisites
 
 - Docker and Docker Compose installed
+- Node.js and npm (for CSS build step)
 - GPUStack server running and accessible
 - Domain name configured (for SSL deployment)
 - Minimum 4GB RAM, 2 CPU cores recommended
 
 ## 🖌️ Frontend Asset Preparation (Tailwind CSS)
 
-Before deploying, you must build the Tailwind CSS output file locally:
+**CRITICAL**: Before deploying, you must build the Tailwind CSS output file locally:
 
 ```bash
-npm install  # If you haven't already
+# Install dependencies
+npm install
+
+# Build CSS for production
 npm run build:css  # Generates frontend/public/styles/output.css
 ```
+
 - The file `frontend/public/styles/output.css` will be used by the frontend in production.
 - **No CDN or external CSS is needed.**
 - Make sure your `index.html` references only `./styles/output.css` for styles.
+- For development, use `npm run build:css:watch` for live CSS updates.
 
 ## 🔧 Configuration System
 
@@ -111,12 +119,20 @@ TAVILY_API_KEY=tvly-xxxxxxxxxxxxxxxx
 ```bash
 git clone https://github.com/youssefm13/gpustack-ui.git
 cd gpustack-ui
-git checkout v2.5.0
+git checkout v2.5.4
 ```
 
-#### Step 2: Create Production Environment File
+#### Step 2: Build Frontend Assets
 ```bash
-cp .env.production.template .env.prod
+# Install dependencies and build CSS
+npm install
+npm run build:css
+```
+
+#### Step 3: Create Production Environment File
+```bash
+# Create your production environment file
+cp .env.production.template .env.prod  # or create from scratch
 ```
 
 Edit `.env.prod` with your configuration:
@@ -212,6 +228,9 @@ uvicorn main:app --host 0.0.0.0 --port 8001 --workers 4
 cd ../frontend/public
 # Update config.js with your backend URL
 nano config.js
+
+# Verify CSS is built
+ls -la styles/output.css
 
 # Serve with nginx, Apache, or any static server
 # Example with Python:
@@ -393,4 +412,4 @@ For issues or questions:
 
 ---
 
-**GPUStack UI v2.5.0** - Production ready with OCR support and enhanced configuration management.
+**GPUStack UI v2.5.4** - Production ready with local Tailwind CSS build, OCR support, and enhanced configuration management.

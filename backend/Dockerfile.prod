@@ -24,7 +24,21 @@ WORKDIR /app
 COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Stage 2: Production runtime
+# Stage 2: Frontend CSS Build
+FROM node:20-alpine as frontend-builder
+
+WORKDIR /app
+
+# Copy package files and install dependencies
+COPY package*.json ./
+RUN npm ci --only=production
+
+# Copy frontend source and build CSS
+COPY frontend/public/styles/input.css ./frontend/public/styles/
+COPY tailwind.config.js ./
+RUN npm run build:css
+
+# Stage 3: Production runtime
 FROM python:3.12-slim as production
 
 # Set environment variables
@@ -53,6 +67,9 @@ COPY backend/ .
 
 # Copy frontend files to the expected location
 COPY frontend/public ./frontend/public
+
+# Copy built CSS from frontend-builder stage
+COPY --from=frontend-builder /app/frontend/public/styles/output.css ./frontend/public/styles/
 
 # Create necessary directories and set permissions
 RUN mkdir -p /app/logs /app/uploads && \
