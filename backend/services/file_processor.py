@@ -127,14 +127,32 @@ class EnhancedFileProcessor:
         try:
             doc = Document(file.file)
             
-            # Extract core properties if available
-            if hasattr(doc, 'core_properties'):
-                core_props = doc.core_properties
+            # Extract core properties if available - with better error handling
+            try:
+                if hasattr(doc, 'core_properties') and doc.core_properties:
+                    core_props = doc.core_properties
+                    # Safely extract properties with fallbacks
+                    metadata.update({
+                        "title": getattr(core_props, 'title', None) or "Untitled",
+                        "author": getattr(core_props, 'author', None) or "Unknown",
+                        "created": getattr(core_props, 'created', None),
+                        "modified": getattr(core_props, 'modified', None)
+                    })
+                else:
+                    metadata.update({
+                        "title": "Untitled",
+                        "author": "Unknown",
+                        "created": None,
+                        "modified": None
+                    })
+            except Exception as prop_error:
+                logger.warning(f"Could not read DOCX properties for {file.filename}: {str(prop_error)}")
                 metadata.update({
-                    "title": getattr(core_props, 'title', None),
-                    "author": getattr(core_props, 'author', None),
-                    "created": getattr(core_props, 'created', None),
-                    "modified": getattr(core_props, 'modified', None)
+                    "title": "Untitled",
+                    "author": "Unknown",
+                    "created": None,
+                    "modified": None,
+                    "properties_error": str(prop_error)
                 })
             
             # Process paragraphs with style information

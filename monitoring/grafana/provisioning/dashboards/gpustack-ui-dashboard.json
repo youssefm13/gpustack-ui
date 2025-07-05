@@ -1,0 +1,266 @@
+{
+  "title": "GPUStack UI Monitoring",
+  "tags": ["gpustack", "ai", "monitoring"],
+  "style": "dark",
+  "timezone": "browser",
+  "panels": [
+    {
+      "id": 1,
+      "title": "System Health",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "gpustack_ui_up",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "steps": [
+              {"color": "red", "value": 0},
+              {"color": "green", "value": 1}
+            ]
+          }
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+    },
+    {
+      "id": 2,
+      "title": "CPU Usage",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "gpustack_ui_system_cpu_percent",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "continuous-BlYlRd"},
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "barAlignment": 0,
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "spanNulls": false,
+            "showPoints": "auto",
+            "pointSize": 5,
+            "stacking": {"mode": "none"},
+            "axisLabel": "",
+            "scaleDistribution": {"type": "linear"},
+            "hideFrom": {"legend": false, "tooltip": false, "vis": false},
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "red", "value": 80}
+              ]
+            }
+          }
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+    },
+    {
+      "id": 3,
+      "title": "Memory Usage",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "gpustack_ui_system_memory_percent",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "continuous-BlYlRd"},
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "barAlignment": 0,
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "spanNulls": false,
+            "showPoints": "auto",
+            "pointSize": 5,
+            "stacking": {"mode": "none"},
+            "axisLabel": "",
+            "scaleDistribution": {"type": "linear"},
+            "hideFrom": {"legend": false, "tooltip": false, "vis": false},
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 70},
+                {"color": "red", "value": 90}
+              ]
+            }
+          }
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+    },
+    {
+      "id": 4,
+      "title": "Active Connections",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "gpustack_ui_active_connections",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "continuous-BlYlRd"},
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "barAlignment": 0,
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "spanNulls": false,
+            "showPoints": "auto",
+            "pointSize": 5,
+            "stacking": {"mode": "none"},
+            "axisLabel": "",
+            "scaleDistribution": {"type": "linear"},
+            "hideFrom": {"legend": false, "tooltip": false, "vis": false}
+          }
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+    },
+    {
+      "id": 5,
+      "title": "Total Requests",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "gpustack_ui_total_requests",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "continuous-BlYlRd"},
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "barAlignment": 0,
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "spanNulls": false,
+            "showPoints": "auto",
+            "pointSize": 5,
+            "stacking": {"mode": "none"},
+            "axisLabel": "",
+            "scaleDistribution": {"type": "linear"},
+            "hideFrom": {"legend": false, "tooltip": false, "vis": false}
+          }
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16}
+    },
+    {
+      "id": 6,
+      "title": "Requests per Minute",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "gpustack_ui_requests_per_minute",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "continuous-BlYlRd"},
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "barAlignment": 0,
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "spanNulls": false,
+            "showPoints": "auto",
+            "pointSize": 5,
+            "stacking": {"mode": "none"},
+            "axisLabel": "",
+            "scaleDistribution": {"type": "linear"},
+            "hideFrom": {"legend": false, "tooltip": false, "vis": false}
+          }
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16}
+    },
+    {
+      "id": 7,
+      "title": "Service Uptime",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "gpustack_ui_uptime_seconds",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "continuous-BlYlRd"},
+          "custom": {
+            "displayMode": "auto",
+            "reduceOptions": {
+              "calcs": ["lastNotNull"],
+              "values": false,
+              "fields": ""
+            },
+            "text": {},
+            "textMode": "auto"
+          },
+          "unit": "s"
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24}
+    },
+    {
+      "id": 8,
+      "title": "Database Health",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "gpustack_ui_database_status",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "steps": [
+              {"color": "red", "value": 0},
+              {"color": "green", "value": 1}
+            ]
+          }
+        }
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24}
+    }
+  ],
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "refresh": "30s"
+} 

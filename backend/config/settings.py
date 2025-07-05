@@ -8,9 +8,16 @@ from pydantic import Field
 from dotenv import load_dotenv
 
 # Load environment variables from .env files
-# Load .env first (template), then .env.local (local overrides)
+# Load .env first (template), then .env.local (local overrides), then .env.prod (production)
 load_dotenv(".env")
 load_dotenv(".env.local", override=True)
+load_dotenv(".env.prod", override=True)
+
+# Also load environment variables from system environment
+# This ensures Docker environment variables are picked up
+for key, value in os.environ.items():
+    if key.startswith(('GPUSTACK_', 'JWT_', 'TAVILY_', 'BACKEND_', 'CORS_', 'ALLOWED_')):
+        os.environ[key] = value
 
 
 class Settings(BaseSettings):

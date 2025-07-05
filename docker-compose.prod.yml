@@ -3,8 +3,8 @@ version: '3.8'
 services:
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile.prod
+      context: .
+      dockerfile: backend/Dockerfile.prod
       target: production
     container_name: gpustack-ui-backend-prod
     ports:

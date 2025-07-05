@@ -84,41 +84,58 @@ async def enhance_model_info(model: Dict[str, Any], http_client: httpx.AsyncClie
     Enhance model info with status checks and inferred capabilities.
     """
     try:
-        # Test if model is responsive by making a simple chat completions call
-        test_url = f"{settings.gpustack_api_base}/v1/chat/completions"
-        test_payload = {
-            "model": model["name"],
-            "messages": [{"role": "user", "content": "test"}],
-            "max_tokens": 1,
-            "temperature": 0.0
-        }
-        
-        try:
-            test_response = await http_client.post(
-                test_url, 
-                headers=headers, 
-                json=test_payload,
-                timeout=10.0
-            )
-            
-            if test_response.status_code == 200:
-                model["status"] = "ready"
-                model["ready_replicas"] = 1
-                model["status_description"] = "Model is online and ready to serve requests"
-            else:
-                model["status"] = "error"
-                model["ready_replicas"] = 0
-                model["status_description"] = f"Model error: {test_response.status_code}"
-                
-        except Exception as test_error:
-            # If test call fails, model might be loading or offline
-            model["status"] = "loading"
-            model["ready_replicas"] = 0
-            model["status_description"] = "Model may be loading or temporarily unavailable"
-            print(f"Model {model['name']} test failed: {str(test_error)}")
-        
-        # Infer model capabilities from name
+        # Infer model capabilities from name first
         model["meta"] = infer_model_metadata(model["name"])
+        
+        # For very large models (100B+ parameters), skip testing and assume ready
+        # These models can take a very long time to respond to test calls
+        if model["meta"].get("n_params", 0) > 100_000_000_000:  # 100B+ parameters
+            print(f"Large model {model['name']} detected ({model['meta'].get('n_params', 0) / 1e9:.1f}B params), skipping test")
+            model["status"] = "ready"
+            model["ready_replicas"] = 1
+            model["status_description"] = "Large model - assumed ready (test skipped for performance)"
+        else:
+            # Test if model is responsive by making a simple chat completions call
+            test_url = f"{settings.gpustack_api_base}/v1/chat/completions"
+            test_payload = {
+                "model": model["name"],
+                "messages": [{"role": "user", "content": "test"}],
+                "max_tokens": 10,  # Increased from 1 for better model testing
+                "temperature": 0.0
+            }
+            
+            print(f"Testing model {model['name']} with payload: {test_payload}")
+            
+            try:
+                test_response = await http_client.post(
+                    test_url, 
+                    headers=headers, 
+                    json=test_payload,
+                    timeout=15.0  # Increased timeout for large models
+                )
+                
+                print(f"Model {model['name']} test response status: {test_response.status_code}")
+                
+                if test_response.status_code == 200:
+                    model["status"] = "ready"
+                    model["ready_replicas"] = 1
+                    model["status_description"] = "Model is online and ready to serve requests"
+                    print(f"Model {model['name']} is ready")
+                else:
+                    response_text = test_response.text[:200]  # Limit response text for logging
+                    model["status"] = "error"
+                    model["ready_replicas"] = 0
+                    model["status_description"] = f"Model error: {test_response.status_code} - {response_text}"
+                    print(f"Model {model['name']} test failed with status {test_response.status_code}: {response_text}")
+                    
+            except Exception as test_error:
+                # If test call fails, model might be loading or offline
+                model["status"] = "loading"
+                model["ready_replicas"] = 0
+                model["status_description"] = f"Model may be loading or temporarily unavailable: {str(test_error)}"
+                print(f"Model {model['name']} test failed with exception: {str(test_error)}")
+                print(f"Exception type: {type(test_error)}")
+        
         model["total_replicas"] = 1
         model["last_updated"] = model.get("created_at", "")
         
@@ -155,13 +172,18 @@ def infer_model_metadata(model_name: str) -> Dict[str, Any]:
         r'deepseek': lambda m: 7_000_000_000,                  # deepseek default
     }
     
-    # Context window patterns
+    # Enhanced context window patterns with more accurate detection
     context_patterns = {
-        r'qwen.*3.*32': 32768,
-        r'qwen.*3.*235': 131072,
-        r'qwen.*3': 32768,
-        r'llama.*4': 32768,
-        r'deepseek': 32768,
+        r'qwen.*3.*235.*a22b': 131072,  # Qwen3-235B-A22B has 131K context
+        r'qwen.*3.*32.*bf16': 32768,    # Qwen3-32B-BF16
+        r'qwen.*3.*32': 32768,          # Qwen3-32B variants
+        r'qwen.*3': 32768,              # Qwen3 default
+        r'llama.*4': 32768,             # Llama 4 models
+        r'deepseek.*coder.*33b': 16384, # DeepSeek Coder 33B
+        r'deepseek': 32768,             # DeepSeek default
+        r'codellama': 16384,            # Code Llama models
+        r'phi.*3': 8192,                # Phi-3 models
+        r'gemma.*2': 8192,              # Gemma 2 models
     }
     
     n_params = 0
@@ -177,7 +199,7 @@ def infer_model_metadata(model_name: str) -> Dict[str, Any]:
                 n_params = extractor
             break
     
-    # Match context window
+    # Match context window with more specific patterns first
     for pattern, ctx in context_patterns.items():
         if re.search(pattern, name_lower):
             n_ctx = ctx
@@ -188,7 +210,9 @@ def infer_model_metadata(model_name: str) -> Dict[str, Any]:
         "n_ctx": n_ctx,
         "architecture": infer_architecture(name_lower),
         "quantization": infer_quantization(name_lower),
-        "precision": infer_precision(name_lower)
+        "precision": infer_precision(name_lower),
+        "context_window_formatted": format_context_window(n_ctx),
+        "max_safe_tokens": calculate_max_safe_tokens(n_ctx)
     }
 
 def infer_architecture(name_lower: str) -> str:
@@ -249,3 +273,16 @@ def categorize_model_size(params: int) -> str:
         return "large"
     else:
         return "extra-large"
+
+def format_context_window(n_ctx: int) -> str:
+    """Format context window size for display."""
+    if n_ctx >= 100000:
+        return f"{n_ctx // 1000}K tokens"
+    elif n_ctx >= 1000:
+        return f"{n_ctx // 1000}K tokens"
+    else:
+        return f"{n_ctx} tokens"
+
+def calculate_max_safe_tokens(n_ctx: int) -> int:
+    """Calculate safe maximum tokens for response (80% of context window)."""
+    return int(n_ctx * 0.8)

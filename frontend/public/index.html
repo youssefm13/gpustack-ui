@@ -471,7 +471,7 @@
                             id="stopButton"
                             onclick="stopChat()" 
                             class="px-8 py-3 rounded-lg focus:outline-none focus:ring-2 transition-colors"
-style="background-color: var(--accent-red); color: white; focus:ring-color: var(--accent-red); display: none;"
+                            style="background-color: var(--accent-red); color: white; focus:ring-color: var(--accent-red); display: none;"
                             onmouseover="this.style.opacity='0.9'"
                             onmouseout="this.style.opacity='1'"
                         >
@@ -489,27 +489,89 @@ style="background-color: var(--accent-red); color: white; focus:ring-color: var(
             </div>
             
             <div class="flex-1 overflow-y-auto p-4 space-y-6">
-                <!-- File Upload -->
-                <div class="rounded-lg p-6" style="background-color: var(--bg-tertiary); border: 1px solid var(--border-color);">
-                    <h3 class="text-lg font-semibold mb-4" style="color: var(--text-primary);">File Upload</h3>
-                    <div class="space-y-4">
-                        <input 
-                            type="file" 
-                            id="fileInput" 
-                            accept=".pdf,.docx,.txt,.jpg,.jpeg,.png"
-                            class="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold transition-colors"
-                            style="background-color: var(--bg-quaternary); border: 1px solid var(--border-color); color: var(--text-primary); file:background-color: var(--accent-blue); file:color: white;"
+                <!-- File Upload Section -->
+                <div class="space-y-4">
+                    <!-- File Upload Zone -->
+                    <div 
+                        id="fileUploadZone" 
+                        class="border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer"
+                        style="border-color: var(--border-color); color: var(--text-secondary);"
+                        onmouseover="this.style.borderColor='var(--accent-blue)'"
+                        onmouseout="this.style.borderColor='var(--border-color)'"
+                        onclick="document.getElementById('fileInput').click()"
+                    >
+                        <div class="space-y-2">
+                            <svg class="mx-auto h-12 w-12" style="color: var(--text-muted);" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
+                            <div>
+                                <p class="text-lg font-medium">Drop files here or click to upload</p>
+                                <p class="text-sm" style="color: var(--text-muted);">
+                                    Supports PDF, DOCX, TXT, Images (JPG, PNG, GIF, TIFF, BMP)
+                                </p>
+                                <p class="text-xs" style="color: var(--text-muted);">
+                                    Max 50MB per file, 10 files per batch
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- File Input (Hidden) -->
+                    <input 
+                        type="file" 
+                        id="fileInput" 
+                        multiple
+                        accept=".pdf,.docx,.txt,.jpg,.jpeg,.png,.gif,.tiff,.bmp"
+                        class="hidden"
+                        onchange="handleFileSelection()"
+                    >
+
+                    <!-- Analysis Mode Selection -->
+                    <div class="space-y-2">
+                        <label class="text-sm font-medium" style="color: var(--text-secondary);">Analysis Mode:</label>
+                        <select 
+                            id="analysisMode" 
+                            class="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 transition-colors"
+                            style="background-color: var(--bg-quaternary); border: 1px solid var(--border-color); color: var(--text-primary);"
                         >
-                        <button 
-                            onclick="uploadFile()" 
-                            class="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 transition-colors"
-                            style="background-color: var(--accent-green); color: white;"
-                            onmouseover="this.style.opacity='0.9'"
-                            onmouseout="this.style.opacity='1'"
-                        >
-                            Upload & Process
-                        </button>
-                        <div id="uploadStatus" class="text-sm" style="color: var(--text-tertiary);"></div>
+                            <option value="quick">Quick Analysis (Fast)</option>
+                            <option value="detailed">Detailed Analysis (Comprehensive)</option>
+                            <option value="semantic">Semantic Analysis (Deep Understanding)</option>
+                            <option value="structured">Structured Analysis (Document Structure)</option>
+                        </select>
+                    </div>
+
+                    <!-- Upload Button -->
+                    <button 
+                        onclick="uploadFiles()" 
+                        id="uploadButton"
+                        disabled
+                        class="w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        style="background-color: var(--accent-green); color: white;"
+                        onmouseover="if(!this.disabled) this.style.opacity='0.9'"
+                        onmouseout="if(!this.disabled) this.style.opacity='1'"
+                    >
+                        <span id="uploadButtonText">Select Files to Upload</span>
+                    </button>
+
+                    <!-- Progress Bar -->
+                    <div id="uploadProgress" class="hidden space-y-2">
+                        <div class="flex justify-between text-sm">
+                            <span style="color: var(--text-secondary);">Processing files...</span>
+                            <span id="progressText" style="color: var(--text-secondary);">0%</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2" style="background-color: var(--bg-quaternary);">
+                            <div id="progressBar" class="h-2 rounded-full transition-all duration-300" style="background-color: var(--accent-blue); width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Upload Status -->
+                    <div id="uploadStatus" class="text-sm" style="color: var(--text-tertiary);"></div>
+
+                    <!-- File List -->
+                    <div id="fileList" class="space-y-2 hidden">
+                        <h4 class="text-sm font-medium" style="color: var(--text-secondary);">Selected Files:</h4>
+                        <div id="fileItems" class="space-y-1"></div>
                     </div>
                 </div>
 
@@ -553,6 +615,10 @@ style="background-color: var(--accent-red); color: white; focus:ring-color: var(
                         <div class="flex justify-between">
                             <span>Max Response:</span>
                             <span style="color: var(--accent-blue);">4000 tokens</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Context Usage:</span>
+                            <span id="contextUsage" style="color: var(--accent-green);">0%</span>
                         </div>
                         <div class="flex justify-between">
                             <span>Server:</span>
@@ -633,6 +699,7 @@ style="background-color: var(--accent-red); color: white; focus:ring-color: var(
             }
             
             const contextWindow = currentModelData.meta.n_ctx;
+            const maxSafeTokens = currentModelData.meta?.max_safe_tokens || Math.floor(contextWindow * 0.8);
             
             // Estimate tokens in current conversation (rough approximation: 4 chars per token)
             let estimatedPromptTokens = 0;
@@ -643,14 +710,67 @@ style="background-color: var(--accent-red); color: white; focus:ring-color: var(
             // Add some buffer for the current user message and system prompts
             estimatedPromptTokens += 200;
             
-            // Calculate available tokens for response (leave 20% buffer)
-            const availableTokens = Math.floor((contextWindow - estimatedPromptTokens) * 0.8);
+            // Calculate available tokens for response (use full safe limit)
+            const availableTokens = Math.max(0, maxSafeTokens - estimatedPromptTokens);
             
-            // Set reasonable bounds and ensure we don't exceed context
-            const maxTokens = Math.min(Math.max(availableTokens, 500), 8000);
+            // Set reasonable bounds - use more of the context window for large models
+            const minTokens = 500;
+            const maxTokens = Math.min(availableTokens, maxSafeTokens);
             
-            // Final safety check - never exceed half the context window
-            return Math.min(maxTokens, Math.floor(contextWindow / 2));
+            // For very large context windows, allow higher response limits
+            const finalMaxTokens = Math.max(minTokens, maxTokens);
+            
+            // Update context usage display
+            updateContextUsage(estimatedPromptTokens, contextWindow, finalMaxTokens);
+            
+            return finalMaxTokens;
+        }
+        
+        // Update context usage display
+        function updateContextUsage(promptTokens, contextWindow, responseTokens) {
+            const totalUsage = promptTokens + responseTokens;
+            const usagePercent = Math.round((totalUsage / contextWindow) * 100);
+            const usageElement = document.getElementById('contextUsage');
+            
+            if (usageElement) {
+                let color = 'var(--accent-green)';
+                if (usagePercent > 80) {
+                    color = 'var(--accent-red)';
+                } else if (usagePercent > 60) {
+                    color = 'var(--accent-yellow)';
+                } else if (usagePercent > 40) {
+                    color = 'var(--accent-orange)';
+                }
+                
+                usageElement.style.color = color;
+                usageElement.textContent = `${usagePercent}% (${totalUsage.toLocaleString()}/${contextWindow.toLocaleString()})`;
+            }
+        }
+        
+        // Update context usage display based on current conversation state
+        function updateContextUsageDisplay() {
+            const currentModelData = availableModels.find(m => m.name === currentModel);
+            if (!currentModelData || !currentModelData.meta?.n_ctx) {
+                return;
+            }
+            
+            const contextWindow = currentModelData.meta.n_ctx;
+            
+            // Calculate current prompt tokens
+            let estimatedPromptTokens = 0;
+            conversationContext.forEach(msg => {
+                estimatedPromptTokens += Math.ceil(msg.content.length / 4);
+            });
+            estimatedPromptTokens += 200; // Buffer for user message and system prompts
+            
+            // Calculate estimated response tokens (use a reasonable default)
+            const estimatedResponseTokens = Math.min(4000, Math.floor(contextWindow * 0.3));
+            
+            // Update the display
+            updateContextUsage(estimatedPromptTokens, contextWindow, estimatedResponseTokens);
+            
+            // Also update the model info panel if it exists
+            updateModelInfo();
         }
 
         function stopChat() {
@@ -750,6 +870,16 @@ style="background-color: var(--accent-red); color: white; focus:ring-color: var(
             // Calculate dynamic max_tokens
             const maxTokens = calculateMaxTokens();
 
+            // Debug: Log conversation context
+            console.log('Conversation context being sent to AI:', conversationContext);
+            console.log('User message:', message);
+            
+            // Manage conversation context before sending
+            manageConversationContext();
+            
+            // Debug conversation context
+            debugConversationContext();
+
             try {
                 // Try streaming first
                 const response = await fetch(`${API_BASE}/api/inference/stream`, {
@@ -847,6 +977,9 @@ style="background-color: var(--accent-red); color: white; focus:ring-color: var(
                             conversationContext = conversationContext.slice(-20);
                         }
                         
+                        // Update context usage display after conversation changes
+                        updateContextUsageDisplay();
+                        
                         // Update conversation list if visible
                         if (conversationHistoryVisible) {
                             loadConversations();
@@ -887,6 +1020,15 @@ style="background-color: var(--accent-red); color: white; focus:ring-color: var(
                 // Calculate dynamic max_tokens
                 const maxTokens = calculateMaxTokens();
                 
+                // Debug: Log conversation context for non-streaming
+                console.log('Non-streaming conversation context:', conversationContext);
+                
+                // Manage conversation context before sending
+                manageConversationContext();
+                
+                // Debug conversation context
+                debugConversationContext();
+                
                 const response = await fetch(`${API_BASE}/api/inference/infer`, {
                     method: 'POST',
                     headers: getAuthHeaders(),
@@ -919,6 +1061,9 @@ style="background-color: var(--accent-red); color: white; focus:ring-color: var(
                     if (conversationContext.length > 20) {
                         conversationContext = conversationContext.slice(-20);
                     }
+                    
+                    // Update context usage display after conversation changes
+                    updateContextUsageDisplay();
                 } else {
                     addMessageToChat('system', 'Error: Could not connect to GPUStack');
                 }
@@ -927,34 +1072,102 @@ style="background-color: var(--accent-red); color: white; focus:ring-color: var(
             }
         }
 
-        async function uploadFile() {
+        // File handling functions
+        let selectedFiles = [];
+
+        function handleFileSelection() {
+            const fileInput = document.getElementById('fileInput');
+            const uploadButton = document.getElementById('uploadButton');
+            const uploadButtonText = document.getElementById('uploadButtonText');
+            const fileList = document.getElementById('fileList');
+            const fileItems = document.getElementById('fileItems');
+
+            selectedFiles = Array.from(fileInput.files);
+            
+            if (selectedFiles.length > 0) {
+                uploadButton.disabled = false;
+                uploadButtonText.textContent = `Upload ${selectedFiles.length} File${selectedFiles.length > 1 ? 's' : ''}`;
+                
+                // Show file list
+                fileList.classList.remove('hidden');
+                fileItems.innerHTML = '';
+                
+                selectedFiles.forEach((file, index) => {
+                    const fileItem = document.createElement('div');
+                    fileItem.className = 'flex items-center justify-between p-2 rounded';
+                    fileItem.style.backgroundColor = 'var(--bg-quaternary)';
+                    
+                    const fileInfo = document.createElement('div');
+                    fileInfo.className = 'flex-1';
+                    fileInfo.innerHTML = `
+                        <div class="text-sm font-medium" style="color: var(--text-primary);">${file.name}</div>
+                        <div class="text-xs" style="color: var(--text-muted);">${(file.size / 1024 / 1024).toFixed(2)} MB</div>
+                    `;
+                    
+                    const removeBtn = document.createElement('button');
+                    removeBtn.className = 'ml-2 px-2 py-1 text-xs rounded';
+                    removeBtn.style.backgroundColor = 'var(--accent-red)';
+                    removeBtn.style.color = 'white';
+                    removeBtn.textContent = 'Remove';
+                    removeBtn.onclick = () => removeFile(index);
+                    
+                    fileItem.appendChild(fileInfo);
+                    fileItem.appendChild(removeBtn);
+                    fileItems.appendChild(fileItem);
+                });
+            } else {
+                uploadButton.disabled = true;
+                uploadButtonText.textContent = 'Select Files to Upload';
+                fileList.classList.add('hidden');
+            }
+        }
+
+        function removeFile(index) {
+            selectedFiles.splice(index, 1);
+            handleFileSelection();
+        }
+
+        async function uploadFiles() {
             // Check authentication first
             if (!token) {
                 updateStatus('uploadStatus', 'Please login to upload files', 'text-red-400');
                 return;
             }
             
-            const fileInput = document.getElementById('fileInput');
-            const file = fileInput.files[0];
-            
-            if (!file) {
-                updateStatus('uploadStatus', 'Please select a file', 'text-red-400');
+            if (selectedFiles.length === 0) {
+                updateStatus('uploadStatus', 'Please select files', 'text-red-400');
                 return;
             }
 
             // Check file size on frontend (50MB limit)
-            if (file.size > 50 * 1024 * 1024) {
+            if (selectedFiles.some(file => file.size > 50 * 1024 * 1024)) {
                 updateStatus('uploadStatus', 'File too large (max 50MB)', 'text-red-400');
                 return;
             }
 
-            updateStatus('uploadStatus', 'Processing file...', 'text-blue-400');
+            // Show progress
+            const progressDiv = document.getElementById('uploadProgress');
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            progressDiv.classList.remove('hidden');
+
+            updateStatus('uploadStatus', 'Processing files...', 'text-blue-400');
 
             try {
+                const analysisMode = document.getElementById('analysisMode').value;
                 const formData = new FormData();
-                formData.append('file', file);
+                
+                selectedFiles.forEach(file => {
+                    // Use 'file' for single file upload, 'files' for batch upload
+                    const paramName = selectedFiles.length === 1 ? 'file' : 'files';
+                    formData.append(paramName, file);
+                });
+                formData.append('analysis_mode', analysisMode);
 
-                const response = await fetch(`${API_BASE}/api/files/upload`, {
+                // Determine endpoint based on file count
+                const endpoint = selectedFiles.length === 1 ? '/api/files/upload' : '/api/files/upload/batch';
+                
+                const response = await fetch(`${API_BASE}${endpoint}`, {
                     method: 'POST',
                     headers: {
                         'Authorization': token ? `Bearer ${token}` : undefined
@@ -964,43 +1177,116 @@ style="background-color: var(--accent-red); color: white; focus:ring-color: var(
 
                 if (response.ok) {
                     const data = await response.json();
-                    console.log('Enhanced file processing result:', data); // Debug
+                    console.log('Enhanced file processing result:', data);
+                    
+                    // Update progress
+                    progressBar.style.width = '100%';
+                    progressText.textContent = '100%';
                     
                     // Create detailed status message
-                    const structureInfo = data.structure_info || {};
-                    const metadata = data.metadata || {};
-                    
-                    let statusDetails = [];
-                    if (structureInfo.word_count) statusDetails.push(`${structureInfo.word_count} words`);
-                    if (structureInfo.page_count) statusDetails.push(`${structureInfo.page_count} pages`);
-                    if (structureInfo.has_headers) statusDetails.push('structured content');
-                    if (structureInfo.has_tables) statusDetails.push('contains tables');
-                    
-                    const statusMessage = statusDetails.length > 0 
-                        ? `File processed successfully! (${statusDetails.join(', ')})`
-                        : 'File processed successfully!';
+                    let statusMessage = '';
+                    if (selectedFiles.length === 1) {
+                        const structureInfo = data.structure_info || {};
+                        const aiInsights = data.ai_insights || {};
+                        
+                        let statusDetails = [];
+                        if (structureInfo.word_count) statusDetails.push(`${structureInfo.word_count} words`);
+                        if (structureInfo.page_count) statusDetails.push(`${structureInfo.page_count} pages`);
+                        if (aiInsights.summary) statusDetails.push('AI analysis applied');
+                        
+                        statusMessage = statusDetails.length > 0 
+                            ? `File processed successfully! (${statusDetails.join(', ')})`
+                            : 'File processed successfully!';
+                    } else {
+                        statusMessage = `Batch processed: ${data.successful_files}/${data.total_files} files successfully`;
+                    }
                     
                     updateStatus('uploadStatus', statusMessage, 'text-green-400');
                     
-                    // Create enhanced file message with metadata
+                    // Create enhanced file message with debugging
+                    console.log('Creating file message with data:', data);
                     const fileMessage = createEnhancedFileMessage(data);
+                    console.log('Created file message:', fileMessage);
                     addMessageToChat('system', fileMessage);
                     
-                    // Add optimized content to conversation context
+                    // Add a helpful message to let user know they can ask questions
+                    addMessageToChat('system', `✅ Document "${data.filename}" has been processed and is now available for questions. You can ask me anything about this document!`);
+                    
+                    // Add content to conversation context
                     if (data.content) {
+                        console.log('Adding file content to conversation context:', {
+                            filename: data.filename,
+                            contentLength: data.content.length,
+                            hasAIInsights: !!(data.ai_insights && data.ai_insights.summary)
+                        });
+                        // Create a single, well-structured system message with all file information
+                        let fileContextMessage = `=== DOCUMENT CONTEXT ===\n`;
+                        fileContextMessage += `Filename: ${data.filename}\n`;
+                        fileContextMessage += `Type: ${data.content_type}\n`;
+                        
+                        // Add metadata if available
+                        if (data.metadata) {
+                            if (data.metadata.title) fileContextMessage += `Title: ${data.metadata.title}\n`;
+                            if (data.metadata.author) fileContextMessage += `Author: ${data.metadata.author}\n`;
+                            if (data.metadata.word_count) fileContextMessage += `Word Count: ${data.metadata.word_count}\n`;
+                            if (data.metadata.page_count) fileContextMessage += `Pages: ${data.metadata.page_count}\n`;
+                        }
+                        
+                        // Add AI insights if available
+                        if (data.ai_insights && data.ai_insights.summary) {
+                            fileContextMessage += `\n=== DOCUMENT SUMMARY ===\n${data.ai_insights.summary}\n`;
+                            
+                            if (data.ai_insights.key_points && data.ai_insights.key_points.length > 0) {
+                                fileContextMessage += `\n=== KEY POINTS ===\n`;
+                                data.ai_insights.key_points.forEach((point, index) => {
+                                    fileContextMessage += `${index + 1}. ${point}\n`;
+                                });
+                            }
+                            
+                            if (data.ai_insights.topics && data.ai_insights.topics.length > 0) {
+                                fileContextMessage += `\n=== TOPICS ===\n${data.ai_insights.topics.join(', ')}\n`;
+                            }
+                        }
+                        
+                        // Add the main document content
+                        fileContextMessage += `\n=== DOCUMENT CONTENT ===\n${data.content}\n`;
+                        fileContextMessage += `\n=== END DOCUMENT ===\n`;
+                        fileContextMessage += `\nYou now have access to this document. When asked questions about it, refer to the content above and provide detailed, accurate answers based on the document information.`;
+                        
+                        // Add as a single system message to conversation context
                         conversationContext.push({
                             role: "system",
-                            content: `File analysis from ${data.filename}: ${data.content}`
+                            content: fileContextMessage
                         });
                         
-                        // Maintain context window efficiency
-                        if (conversationContext.length > 12) {
-                            conversationContext = conversationContext.slice(-12);
+                        // Keep conversation context manageable - prioritize file content
+                        if (conversationContext.length > 15) {
+                            // Keep the most recent file context and recent conversation
+                            const fileMessages = conversationContext.filter(msg => 
+                                msg.role === "system" && msg.content.includes("=== DOCUMENT CONTEXT ===")
+                            );
+                            const recentMessages = conversationContext.filter(msg => 
+                                msg.role !== "system" || !msg.content.includes("=== DOCUMENT CONTEXT ===")
+                            ).slice(-10);
+                            
+                            conversationContext = [...fileMessages, ...recentMessages];
                         }
+                        
+                        // Debug logging
+                        console.log('Added file to conversation context:', {
+                            filename: data.filename,
+                            contextLength: fileContextMessage.length,
+                            totalContextMessages: conversationContext.length
+                        });
+                        
+                        // Update context usage display after file upload
+                        updateContextUsageDisplay();
                     }
                     
-                    // Clear file input
-                    fileInput.value = '';
+                    // Clear files
+                    selectedFiles = [];
+                    document.getElementById('fileInput').value = '';
+                    handleFileSelection();
                     
                 } else {
                     const errorData = await response.json().catch(() => ({}));
@@ -1009,6 +1295,13 @@ style="background-color: var(--accent-red); color: white; focus:ring-color: var(
                 }
             } catch (error) {
                 updateStatus('uploadStatus', `Error: ${error.message}`, 'text-red-400');
+            } finally {
+                // Hide progress after a delay
+                setTimeout(() => {
+                    document.getElementById('uploadProgress').classList.add('hidden');
+                    progressBar.style.width = '0%';
+                    progressText.textContent = '0%';
+                }, 2000);
             }
         }
         
@@ -1020,9 +1313,9 @@ style="background-color: var(--accent-red); color: white; focus:ring-color: var(
             // Add file type and basic info
             message += `📄 **Type:** ${content_type}\n`;
             
-            // Add metadata if available
-            if (metadata.title) message += `📝 **Title:** ${metadata.title}\n`;
-            if (metadata.author) message += `👤 **Author:** ${metadata.author}\n`;
+            // Add metadata if available - with safe property access
+            if (metadata && metadata.title) message += `📝 **Title:** ${metadata.title}\n`;
+            if (metadata && metadata.author) message += `👤 **Author:** ${metadata.author}\n`;
             
             // Add structure information
             if (structure_info) {
@@ -1094,10 +1387,21 @@ style="background-color: var(--accent-red); color: white; focus:ring-color: var(
                     let contextSummary;
                     if (llmSummary && processingStatus === 'success') {
                         // Use the LLM-processed summary as primary context
-                        contextSummary = `Web search for "${query}": ${llmSummary}`;
+                        contextSummary = `=== WEB SEARCH CONTEXT ===\n`;
+                        contextSummary += `Query: "${query}"\n`;
+                        contextSummary += `Results: ${results.length} sources found\n`;
+                        contextSummary += `\n=== SEARCH SUMMARY ===\n${llmSummary}\n`;
+                        contextSummary += `\n=== END SEARCH ===\n`;
+                        contextSummary += `\nYou now have access to this web search information. When asked questions about this topic, refer to the search results above and provide detailed, accurate answers based on the information found.`;
                     } else {
                         // Fall back to basic summary
-                        contextSummary = `Web search results for "${query}": ` + createSearchContextSummary(results);
+                        const basicSummary = createSearchContextSummary(results);
+                        contextSummary = `=== WEB SEARCH CONTEXT ===\n`;
+                        contextSummary += `Query: "${query}"\n`;
+                        contextSummary += `Results: ${results.length} sources found\n`;
+                        contextSummary += `\n=== SEARCH RESULTS ===\n${basicSummary}\n`;
+                        contextSummary += `\n=== END SEARCH ===\n`;
+                        contextSummary += `\nYou now have access to this web search information. When asked questions about this topic, refer to the search results above and provide detailed, accurate answers based on the information found.`;
                     }
                     
                     conversationContext.push({
@@ -1105,7 +1409,23 @@ style="background-color: var(--accent-red); color: white; focus:ring-color: var(
                         content: contextSummary
                     });
                     
-                    searchInput.value = '';
+                    // Keep conversation context manageable - prioritize search content
+                    if (conversationContext.length > 15) {
+                        // Keep the most recent search context and recent conversation
+                        const searchMessages = conversationContext.filter(msg => 
+                            msg.role === "system" && msg.content.includes("=== WEB SEARCH CONTEXT ===")
+                        );
+                        const recentMessages = conversationContext.filter(msg => 
+                            msg.role !== "system" || !msg.content.includes("=== WEB SEARCH CONTEXT ===")
+                        ).slice(-10);
+                        
+                                            conversationContext = [...searchMessages, ...recentMessages];
+                }
+                
+                // Update context usage display after search
+                updateContextUsageDisplay();
+                
+                searchInput.value = '';
                 } else {
                     updateStatus('searchStatus', 'Search failed', 'text-red-400');
                 }
@@ -1638,6 +1958,9 @@ style="background-color: var(--accent-red); color: white; focus:ring-color: var(
                 // Update model info panel
                 updateModelInfo();
                 
+                // Update context usage display for new model
+                updateContextUsageDisplay();
+                
                 // Add system message about model change
                 addMessageToChat('system', `Switched to model: ${currentModel}`);
                 
@@ -1670,10 +1993,25 @@ style="background-color: var(--accent-red); color: white; focus:ring-color: var(
             const contextTokens = currentModelData.meta?.n_ctx || 8192;
             const params = currentModelData.meta?.n_params ? 
                 (currentModelData.meta.n_params / 1e9).toFixed(1) + 'B' : 'Unknown';
+            const contextFormatted = currentModelData.meta?.context_window_formatted || `${contextTokens.toLocaleString()} tokens`;
+            const maxSafeTokens = currentModelData.meta?.max_safe_tokens || Math.floor(contextTokens * 0.8);
             
-            // Calculate max tokens using the same logic as the dynamic function
-            const dynamicMaxTokens = Math.floor(contextTokens * 0.6);
-            const maxResponseTokens = Math.min(Math.max(dynamicMaxTokens, 1000), 50000);
+            // Calculate current context usage
+            let estimatedPromptTokens = 0;
+            conversationContext.forEach(msg => {
+                estimatedPromptTokens += Math.ceil(msg.content.length / 4);
+            });
+            estimatedPromptTokens += 200; // Buffer for user message and system prompts
+            
+            const usagePercent = Math.round((estimatedPromptTokens / contextTokens) * 100);
+            let usageColor = 'var(--accent-green)';
+            if (usagePercent > 80) {
+                usageColor = 'var(--accent-red)';
+            } else if (usagePercent > 60) {
+                usageColor = 'var(--accent-yellow)';
+            } else if (usagePercent > 40) {
+                usageColor = 'var(--accent-orange)';
+            }
             
             infoContainer.innerHTML = `
                 <div class="flex justify-between">
@@ -1686,11 +2024,15 @@ style="background-color: var(--accent-red); color: white; focus:ring-color: var(
                 </div>
                 <div class="flex justify-between">
                     <span>Context:</span>
-                    <span style="color: var(--accent-blue);">${contextTokens.toLocaleString()} tokens</span>
+                    <span style="color: var(--accent-blue);">${contextFormatted}</span>
                 </div>
                 <div class="flex justify-between">
                     <span>Max Response:</span>
-                    <span style="color: var(--accent-blue);">${maxResponseTokens.toLocaleString()} tokens (60%)</span>
+                    <span style="color: var(--accent-blue);">${maxSafeTokens.toLocaleString()} tokens (80%)</span>
+                </div>
+                <div class="flex justify-between">
+                    <span>Context Usage:</span>
+                    <span style="color: ${usageColor};">${usagePercent}% (${estimatedPromptTokens.toLocaleString()}/${contextTokens.toLocaleString()})</span>
                 </div>
                 <div class="flex justify-between">
                     <span>Status:</span>
@@ -3020,9 +3362,23 @@ style="background-color: var(--accent-red); color: white; focus:ring-color: var(
                 if (response.ok) {
                     const newConversation = await response.json();
                     
-                    // Clear current chat and start new conversation
-                    clearChat();
+                    // Preserve file and search contexts when creating new conversation
+                    const fileContexts = conversationContext.filter(msg => 
+                        msg.role === "system" && msg.content.includes("=== DOCUMENT CONTEXT ===")
+                    );
+                    const searchContexts = conversationContext.filter(msg => 
+                        msg.role === "system" && msg.content.includes("=== WEB SEARCH CONTEXT ===")
+                    );
+                    
+                    // Clear current chat but preserve contexts
+                    const chatMessages = document.getElementById('chatMessages');
+                    chatMessages.innerHTML = '<div class="text-center" style="color: var(--text-muted);">Start a conversation...</div>';
+                    
+                    // Set new conversation ID
                     currentConversationId = newConversation.id;
+                    
+                    // Restore contexts to conversation context
+                    conversationContext = [...fileContexts, ...searchContexts];
                     
                     // Refresh conversation list
                     loadConversations();
@@ -3031,6 +3387,13 @@ style="background-color: var(--accent-red); color: white; focus:ring-color: var(
                     if (!initialMessage) {
                         addMessageToChat('system', `✅ Started new conversation: ${newConversation.title}`);
                     }
+                    
+                    // Debug: Log preserved contexts
+                    console.log('Preserved contexts for new conversation:', {
+                        fileContexts: fileContexts.length,
+                        searchContexts: searchContexts.length,
+                        totalContext: conversationContext.length
+                    });
                     
                     return newConversation;
                 } else {
@@ -3260,6 +3623,58 @@ style="background-color: var(--accent-red); color: white; focus:ring-color: var(
                 btn.addEventListener('click', logout);
             });
         });
+
+        // Debug function to log conversation context
+        function debugConversationContext() {
+            console.log('=== CONVERSATION CONTEXT DEBUG ===');
+            console.log('Total messages:', conversationContext.length);
+            
+            conversationContext.forEach((msg, index) => {
+                const preview = msg.content.length > 100 ? 
+                    msg.content.substring(0, 100) + '...' : 
+                    msg.content;
+                console.log(`${index + 1}. [${msg.role}] ${preview}`);
+            });
+            
+            // Check for file context
+            const fileContexts = conversationContext.filter(msg => 
+                msg.role === "system" && msg.content.includes("=== DOCUMENT CONTEXT ===")
+            );
+            console.log('File contexts found:', fileContexts.length);
+            
+            // Check for search context
+            const searchContexts = conversationContext.filter(msg => 
+                msg.role === "system" && msg.content.includes("=== WEB SEARCH CONTEXT ===")
+            );
+            console.log('Search contexts found:', searchContexts.length);
+            
+            console.log('=== END DEBUG ===');
+        }
+
+        // Enhanced context management
+        function manageConversationContext() {
+            if (conversationContext.length > 15) {
+                // Keep file and search contexts, plus recent conversation
+                const fileContexts = conversationContext.filter(msg => 
+                    msg.role === "system" && msg.content.includes("=== DOCUMENT CONTEXT ===")
+                );
+                const searchContexts = conversationContext.filter(msg => 
+                    msg.role === "system" && msg.content.includes("=== WEB SEARCH CONTEXT ===")
+                );
+                const recentMessages = conversationContext.filter(msg => 
+                    msg.role !== "system" || (!msg.content.includes("=== DOCUMENT CONTEXT ===") && !msg.content.includes("=== WEB SEARCH CONTEXT ==="))
+                ).slice(-8); // Keep fewer recent messages to make room for contexts
+                
+                conversationContext = [...fileContexts, ...searchContexts, ...recentMessages];
+                
+                console.log('Context managed:', {
+                    fileContexts: fileContexts.length,
+                    searchContexts: searchContexts.length,
+                    recentMessages: recentMessages.length,
+                    total: conversationContext.length
+                });
+            }
+        }
     </script>
 </body>
 </html>

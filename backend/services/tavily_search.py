@@ -135,7 +135,7 @@ Write in a clear, informative style that provides substantial value beyond just 
                     {"role": "system", "content": "You are a helpful assistant that summarizes web search results clearly and concisely. Provide varied, informative content without repetition."},
                     {"role": "user", "content": prompt}
                 ],
-                "max_tokens": 1200,  # Increased for comprehensive summaries with sources
+                "max_tokens": 4000,  # Increased from 1200 for comprehensive summaries with sources
                 "temperature": 0.3,  # Slightly higher temperature for more variety
                 "repetition_penalty": 1.1,  # Penalty for token repetition
                 "frequency_penalty": 0.3,  # Reduce frequency of repeated tokens

@@ -64,6 +64,8 @@ class ModelMetadata(BaseModel):
     architecture: str = Field(..., description="Model architecture")
     quantization: str = Field(..., description="Quantization type")
     precision: str = Field(..., description="Precision type")
+    context_window_formatted: str = Field(..., description="Formatted context window size for display")
+    max_safe_tokens: int = Field(..., description="Safe maximum tokens for response (80% of context)")
 
 class ModelItem(BaseModel):
     """Individual model information with enhanced status and metadata."""
@@ -100,7 +102,7 @@ class InferenceRequest(BaseModel):
         ]
     )
     temperature: Optional[float] = Field(0.7, ge=0.0, le=2.0, description="Sampling temperature")
-    max_tokens: Optional[int] = Field(1000, gt=0, description="Maximum tokens to generate")
+    max_tokens: Optional[int] = Field(4000, gt=0, le=32768, description="Maximum tokens to generate (supports up to 32,768 for large models)")
     stream: Optional[bool] = Field(False, description="Whether to stream the response")
     top_p: Optional[float] = Field(0.9, ge=0.0, le=1.0, description="Top-p sampling parameter")
     frequency_penalty: Optional[float] = Field(0.0, ge=-2.0, le=2.0, description="Frequency penalty")
@@ -166,10 +168,29 @@ class FileMetadata(BaseModel):
 
 class StructureInfo(BaseModel):
     """File structure information."""
-    has_headers: bool = Field(..., description="Whether the file contains headers")
-    has_tables: bool = Field(..., description="Whether the file contains tables")
+    has_headers: bool = Field(False, description="Whether document has headers")
+    has_tables: bool = Field(False, description="Whether document has tables")
     page_count: Optional[int] = Field(None, description="Number of pages")
     word_count: Optional[int] = Field(None, description="Word count")
+
+class AIInsights(BaseModel):
+    """AI-generated insights about a document."""
+    summary: str = Field("", description="Document summary")
+    key_points: List[str] = Field(default_factory=list, description="Key points from document")
+    topics: List[str] = Field(default_factory=list, description="Topics covered in document")
+    sentiment: str = Field("neutral", description="Document sentiment")
+    complexity_score: float = Field(0.5, description="Complexity score (0.0-1.0)")
+    reading_time_minutes: int = Field(5, description="Estimated reading time in minutes")
+    target_audience: str = Field("general", description="Target audience")
+    document_type: str = Field("document", description="Type of document")
+    confidence_score: float = Field(0.8, description="Confidence in analysis (0.0-1.0)")
+
+class SemanticChunk(BaseModel):
+    """Semantically meaningful chunk of content."""
+    content: str = Field(..., description="Chunk content")
+    topic: str = Field("general", description="Main topic of chunk")
+    importance_score: float = Field(0.5, description="Importance score (0.0-1.0)")
+    context: Dict[str, Any] = Field(default_factory=dict, description="Chunk context")
 
 class FileUploadResponse(BaseModel):
     """File upload response model."""
@@ -178,12 +199,26 @@ class FileUploadResponse(BaseModel):
     content_type: str = Field(..., description="MIME content type")
     metadata: FileMetadata = Field(..., description="File metadata")
     structure_info: StructureInfo = Field(..., description="File structure information")
+    ai_insights: AIInsights = Field(..., description="AI-generated insights")
+    semantic_chunks: List[SemanticChunk] = Field(default_factory=list, description="Semantic chunks")
     processing_status: str = Field(..., description="Processing status (success/error)")
     processing_notes: List[str] = Field(..., description="Processing notes and optimizations applied")
 
 class LegacyFileUploadResponse(BaseModel):
     """Legacy file upload response for backward compatibility."""
     content: str = Field(..., description="Processed file content")
+
+class BatchFileUploadResponse(BaseModel):
+    """Batch file upload response model."""
+    batch_id: str = Field(..., description="Unique batch identifier")
+    total_files: int = Field(..., description="Total number of files in batch")
+    successful_files: int = Field(..., description="Number of successfully processed files")
+    failed_files: int = Field(..., description="Number of failed files")
+    analysis_mode: str = Field(..., description="Analysis mode used for processing")
+    results: List[FileUploadResponse] = Field(default_factory=list, description="Successful file results")
+    failed_files: List[Dict[str, str]] = Field(default_factory=list, description="Failed files with error messages")
+    batch_insights: Optional[Dict[str, Any]] = Field(None, description="Cross-document insights")
+    processing_time: str = Field(..., description="Processing timestamp")
 
 # Enhanced Authentication Models
 class UserCreateRequest(BaseModel):
