@@ -164,3 +164,29 @@ docker-compose up -d
 
 **GPUStack UI v2.0.0** - Built for enhanced AI interactions with intelligent file processing and flexible conversation management.
 
+## Tailwind CSS Workflow
+
+### Building CSS for Production
+Run:
+```sh
+npm run build:css
+```
+This will generate a minified CSS file at `frontend/public/styles/output.css`.
+
+### Live Development (Watch Mode)
+Run:
+```sh
+npm run build:css:watch
+```
+This will watch for changes in your HTML/JS/CSS and automatically rebuild `output.css`.
+
+### Usage in HTML
+Reference the built CSS in your HTML:
+```html
+<link rel="stylesheet" href="./styles/output.css">
+```
+
+### Notes
+- All CSS assets are now served locally. No CDN or external dependencies are required for Tailwind.
+- Remove any old references to `tailwind.min.css`, `tailwind.prod.css`, or similar files.
+

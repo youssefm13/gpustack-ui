@@ -8,6 +8,7 @@ This guide provides comprehensive instructions for deploying GPUStack UI v2.5.0 
 - **Enhanced File Processing**: Support for image files with automatic text extraction
 - **Improved Configuration Management**: Environment-based configuration system
 - **Production-Ready Features**: Enhanced security, logging, and performance optimizations
+- **Local Tailwind CSS Build**: All CSS assets are now built and served locally—no CDN required
 
 ## 📋 Prerequisites
 
@@ -15,6 +16,18 @@ This guide provides comprehensive instructions for deploying GPUStack UI v2.5.0 
 - GPUStack server running and accessible
 - Domain name configured (for SSL deployment)
 - Minimum 4GB RAM, 2 CPU cores recommended
+
+## 🖌️ Frontend Asset Preparation (Tailwind CSS)
+
+Before deploying, you must build the Tailwind CSS output file locally:
+
+```bash
+npm install  # If you haven't already
+npm run build:css  # Generates frontend/public/styles/output.css
+```
+- The file `frontend/public/styles/output.css` will be used by the frontend in production.
+- **No CDN or external CSS is needed.**
+- Make sure your `index.html` references only `./styles/output.css` for styles.
 
 ## 🔧 Configuration System
 

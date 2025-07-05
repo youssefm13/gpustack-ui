@@ -5,11 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NED Secure AI - CACHE BUSTER 21:52</title>
     <script src="./config.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" id="hljs-dark">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css" id="hljs-light" disabled>
+    <link rel="stylesheet" href="./styles/output.css">
+    <script src="./assets/marked.min.js"></script>
+    <script src="./assets/highlight.min.js"></script>
+    <link rel="stylesheet" href="./assets/github-dark.min.css" id="hljs-dark">
+    <link rel="stylesheet" href="./assets/github.min.css" id="hljs-light" disabled>
     <style>
         /* Theme Variables */
         :root {
@@ -632,12 +632,8 @@
 
     <script>
         // Cache buster: 2025-06-29-21:50:52
-        console.log('Script starting...');
-        
-                console.log('About to declare API_BASE...');
         // DECLARE ALL VARIABLES FIRST - before any functions that might reference them
         const API_BASE = window.CONFIG ? window.CONFIG.BACKEND_URL : 'http://localhost:8001';
-        console.log('API_BASE declared:', API_BASE);
         
         let conversationContext = [];
         let currentModel = localStorage.getItem('selectedModel') || 'qwen3';

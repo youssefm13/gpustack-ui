@@ -90,7 +90,7 @@ async def enhance_model_info(model: Dict[str, Any], http_client: httpx.AsyncClie
         # For very large models (100B+ parameters), skip testing and assume ready
         # These models can take a very long time to respond to test calls
         if model["meta"].get("n_params", 0) > 100_000_000_000:  # 100B+ parameters
-            print(f"Large model {model['name']} detected ({model['meta'].get('n_params', 0) / 1e9:.1f}B params), skipping test")
+    
             model["status"] = "ready"
             model["ready_replicas"] = 1
             model["status_description"] = "Large model - assumed ready (test skipped for performance)"
@@ -104,7 +104,7 @@ async def enhance_model_info(model: Dict[str, Any], http_client: httpx.AsyncClie
                 "temperature": 0.0
             }
             
-            print(f"Testing model {model['name']} with payload: {test_payload}")
+    
             
             try:
                 test_response = await http_client.post(
@@ -114,27 +114,21 @@ async def enhance_model_info(model: Dict[str, Any], http_client: httpx.AsyncClie
                     timeout=15.0  # Increased timeout for large models
                 )
                 
-                print(f"Model {model['name']} test response status: {test_response.status_code}")
-                
                 if test_response.status_code == 200:
                     model["status"] = "ready"
                     model["ready_replicas"] = 1
                     model["status_description"] = "Model is online and ready to serve requests"
-                    print(f"Model {model['name']} is ready")
                 else:
                     response_text = test_response.text[:200]  # Limit response text for logging
                     model["status"] = "error"
                     model["ready_replicas"] = 0
                     model["status_description"] = f"Model error: {test_response.status_code} - {response_text}"
-                    print(f"Model {model['name']} test failed with status {test_response.status_code}: {response_text}")
                     
             except Exception as test_error:
                 # If test call fails, model might be loading or offline
                 model["status"] = "loading"
                 model["ready_replicas"] = 0
                 model["status_description"] = f"Model may be loading or temporarily unavailable: {str(test_error)}"
-                print(f"Model {model['name']} test failed with exception: {str(test_error)}")
-                print(f"Exception type: {type(test_error)}")
         
         model["total_replicas"] = 1
         model["last_updated"] = model.get("created_at", "")
@@ -145,7 +139,7 @@ async def enhance_model_info(model: Dict[str, Any], http_client: httpx.AsyncClie
         
     except Exception as e:
         # If all fails, mark as unknown but don't crash
-        print(f"Error enhancing model info for {model['name']}: {str(e)}")
+
         model["status"] = "unknown"
         model["ready_replicas"] = 0
         model["meta"] = {"n_ctx": 8192, "n_params": 0}

@@ -18,9 +18,9 @@ async def lifespan(app: FastAPI):
     # Initialize database
     try:
         await initialize_database()
-        print("✅ Database initialized")
+        pass
     except Exception as e:
-        print(f"⚠️  Database initialization warning: {e}")
+        pass
     
     # Create shared HTTP client with connection pooling
     app.state.http_client = httpx.AsyncClient(
@@ -31,14 +31,14 @@ async def lifespan(app: FastAPI):
         ),
         timeout=httpx.Timeout(30.0, connect=10.0)
     )
-    print("✅ HTTP client pool initialized")
+
     
     yield
     
     # Cleanup
     await app.state.http_client.aclose()
     await close_database()
-    print("🔌 HTTP client pool and database connections closed")
+    
 
 app = FastAPI(
     title="GPUStack UI Backend API",
@@ -123,13 +123,7 @@ app.add_middleware(EnhancedJWTMiddleware)
 # Add request logging middleware
 @app.middleware("http")
 async def log_requests(request, call_next):
-    print(f"=== INCOMING REQUEST ===")
-    print(f"Method: {request.method}")
-    print(f"URL: {request.url}")
-    print(f"Headers: {dict(request.headers)}")
     response = await call_next(request)
-    print(f"Response status: {response.status_code}")
-    print(f"=== END REQUEST ===")
     return response
 
 app.include_router(files.router, prefix="/api/files", tags=["files"])

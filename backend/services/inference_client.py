@@ -2,6 +2,7 @@ import httpx
 import json
 from config.settings import settings
 from typing import Dict, Any, AsyncGenerator
+
 async def send_to_gpustack(data):
     headers = {
         "Content-Type": "application/json"
@@ -14,10 +15,7 @@ async def send_to_gpustack(data):
         async with httpx.AsyncClient(timeout=60.0) as client:
             res = await client.post(f"{settings.gpustack_api_base}/v1/chat/completions", json=data, headers=headers)
             
-            print(f"GPUStack status code: {res.status_code}")
-            
             if res.status_code != 200:
-                print(f"GPUStack error response: {res.text}")
                 res.raise_for_status()
             
             return res.json()
@@ -37,30 +35,20 @@ async def stream_from_gpustack(data):
     if settings.gpustack_api_token:
         headers["Authorization"] = f"Bearer {settings.gpustack_api_token}"
     
-    print(f"=== STREAMING TO GPUSTACK ===")
-    print(f"URL: {settings.gpustack_api_base}/v1/chat/completions")
-    print(f"Headers: {headers}")
-    print(f"Data: {data}")
-    
     try:
         # Use longer timeout for very large models (100B+ parameters)
         timeout_seconds = 300.0 if any("235b" in data.get("model", "").lower() for _ in [1]) else 120.0
         async with httpx.AsyncClient(timeout=timeout_seconds) as client:
             async with client.stream('POST', f"{settings.gpustack_api_base}/v1/chat/completions", json=data, headers=headers) as response:
                 
-                print(f"GPUStack streaming status code: {response.status_code}")
-                
                 if response.status_code != 200:
                     error_text = await response.aread()
-                    print(f"GPUStack streaming error: {error_text}")
                     response.raise_for_status()
                 
-                print("Starting to read streaming response...")
                 buffer = ""
                 chunk_count = 0
                 async for chunk in response.aiter_text():
                     chunk_count += 1
-                    print(f"Received chunk #{chunk_count}: {chunk}")
                     buffer += chunk
                     
                     # Process complete lines
@@ -70,19 +58,14 @@ async def stream_from_gpustack(data):
                         
                         if line.startswith("data: "):
                             data_content = line[6:].strip()
-                            print(f"Processing data line: {data_content}")
-                            
                             if data_content == "[DONE]":
-                                print("Received [DONE] signal")
                                 return
                             
                             if data_content:
                                 try:
                                     chunk_data = json.loads(data_content)
-                                    print(f"Yielding chunk data: {chunk_data}")
                                     yield chunk_data
                                 except json.JSONDecodeError as e:
-                                    print(f"JSON decode error: {e}")
                                     continue
                                     
     except httpx.TimeoutException:

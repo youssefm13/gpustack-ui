@@ -42,7 +42,6 @@ def validate_max_tokens(model_name: str, max_tokens: int) -> bool:
         return min_limit <= max_tokens <= max_limit
         
     except Exception as e:
-        print(f"Error validating max_tokens for model {model_name}: {e}")
         # Fallback to conservative limits
         return 100 <= max_tokens <= 32768
 
@@ -67,9 +66,6 @@ async def infer(
         # Convert Pydantic model to dict
         prompt_data = request.model_dump()
         
-        # Log the request for debugging
-        print(f"Inference request: {prompt_data}")
-        
         # Validate max_tokens dynamically based on model capabilities
         model_name = prompt_data.get('model')
         max_tokens = prompt_data.get('max_tokens', 4000)
@@ -89,13 +85,8 @@ async def infer(
         
         result = await send_to_gpustack(prompt_data)
         
-        # Log the response for debugging
-        print(f"GPUStack response: {result}")
-        
         return result
     except Exception as e:
-        print(f"Inference error: {str(e)}")
-        print(f"Error type: {type(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/stream", responses={500: {"model": ErrorResponse}})
@@ -103,11 +94,7 @@ async def stream_infer(
     request: InferenceRequest,
     current_user: Annotated[User, Depends(get_current_user)]
 ):
-    print(f"=== STREAMING ENDPOINT CALLED ===")
-    print(f"Request received at /api/inference/stream")
-    print(f"User: {current_user.username}")
-    print(f"Request model: {request.model}")
-    print(f"Request messages count: {len(request.messages)}")
+
     """
     Generate streaming text completion using LLM models.
     
@@ -119,10 +106,7 @@ async def stream_infer(
     
     Parameters are the same as the /infer endpoint, but streaming is automatically enabled.
     """
-    print(f"=== STREAMING INFERENCE REQUEST RECEIVED ===")
-    print(f"User: {current_user.username}")
-    print(f"Request model: {request.model}")
-    print(f"Request messages count: {len(request.messages)}")
+
     
     try:
         # Convert Pydantic model to dict and enable streaming
@@ -146,7 +130,7 @@ async def stream_infer(
                        f"Context window: {context_window}, Safe maximum: {safe_max}"
             )
         
-        print(f"Streaming inference request: {prompt_data}")
+
         
         async def generate():
             async for chunk in stream_from_gpustack(prompt_data):
@@ -166,6 +150,5 @@ async def stream_infer(
             }
         )
     except Exception as e:
-        print(f"Streaming inference error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
