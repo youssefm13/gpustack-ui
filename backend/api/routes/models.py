@@ -284,5 +284,5 @@ def format_context_window(n_ctx: int) -> str:
         return f"{n_ctx} tokens"
 
 def calculate_max_safe_tokens(n_ctx: int) -> int:
-    """Calculate safe maximum tokens for response (80% of context window)."""
-    return int(n_ctx * 0.8)
+    """Calculate safe maximum tokens for response (60% of context window for safety)."""
+    return int(n_ctx * 0.6)

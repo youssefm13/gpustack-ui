@@ -88,6 +88,7 @@ class EnhancedAuthService:
         token_data = {
             "user_id": user.id,
             "username": user.username,
+            "is_admin": user.is_admin,
             "exp": int(expire.timestamp()),
             "iat": int(now.timestamp()),
             "jti": jti,

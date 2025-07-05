@@ -20,7 +20,7 @@ def get_tavily_client() -> Optional[TavilyClient]:
             return None
     return _client
 
-async def perform_web_search_async(query: str, http_client: httpx.AsyncClient = None):
+async def perform_web_search_async(query: str, http_client: httpx.AsyncClient = None, model_name: str = "qwen3"):
     # Get Tavily client
     client = get_tavily_client()
     if not client:
@@ -74,16 +74,16 @@ async def perform_web_search_async(query: str, http_client: httpx.AsyncClient = 
                 "index": len(structured_results["results"]) + 1
             })
     
-    # Process results through LLM for better context
-    try:
-        processed_results = await process_search_results_with_llm_async(query, structured_results, http_client)
-        return processed_results
-    except Exception as e:
-        print(f"Error processing search results with LLM: {e}")
-        # Return original results if LLM processing fails
-        return structured_results
+            # Process results through LLM for better context
+        try:
+            processed_results = await process_search_results_with_llm_async(query, structured_results, http_client, model_name)
+            return processed_results
+        except Exception as e:
+            print(f"Error processing search results with LLM: {e}")
+            # Return original results if LLM processing fails
+            return structured_results
 
-async def process_search_results_with_llm_async(query: str, search_results: dict, http_client: httpx.AsyncClient = None):
+async def process_search_results_with_llm_async(query: str, search_results: dict, http_client: httpx.AsyncClient = None, model_name: str = "qwen3"):
     """Process search results through LLM to create better summaries and context."""
     
     # Create a prompt for the LLM to process the search results
@@ -130,12 +130,12 @@ Write in a clear, informative style that provides substantial value beyond just 
                 "Content-Type": "application/json"
             },
             json={
-                "model": "qwen3",  # Default model
+                "model": model_name,  # Use configurable model
                 "messages": [
                     {"role": "system", "content": "You are a helpful assistant that summarizes web search results clearly and concisely. Provide varied, informative content without repetition."},
                     {"role": "user", "content": prompt}
                 ],
-                "max_tokens": 4000,  # Increased from 1200 for comprehensive summaries with sources
+                "max_tokens": 8000,  # Increased for comprehensive summaries with sources
                 "temperature": 0.3,  # Slightly higher temperature for more variety
                 "repetition_penalty": 1.1,  # Penalty for token repetition
                 "frequency_penalty": 0.3,  # Reduce frequency of repeated tokens

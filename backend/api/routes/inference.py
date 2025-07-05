@@ -6,8 +6,45 @@ from middleware.auth_enhanced import get_current_user
 from models.user import User
 import json
 from api.schemas import InferenceRequest, InferenceResponse, ErrorResponse
+from api.routes.models import get_models, infer_model_metadata
 
 router = APIRouter()
+
+def validate_max_tokens(model_name: str, max_tokens: int) -> bool:
+    """
+    Dynamically validate max_tokens based on model capabilities.
+    
+    Args:
+        model_name: Name of the model
+        max_tokens: Requested max_tokens value
+        
+    Returns:
+        True if valid, False otherwise
+    """
+    try:
+        # Get model metadata to determine context window
+        model_metadata = infer_model_metadata(model_name)
+        context_window = model_metadata.get('n_ctx', 8192)  # Default fallback
+        
+        # Calculate safe maximum (80% of context window)
+        safe_max = int(context_window * 0.8)
+        
+        # Allow up to 90% of context window for very large models (>100K context)
+        if context_window > 100000:
+            safe_max = int(context_window * 0.9)
+        
+        # Minimum reasonable limit
+        min_limit = 100
+        
+        # Maximum reasonable limit (prevent abuse)
+        max_limit = min(context_window, 500000)  # Cap at 500K for safety
+        
+        return min_limit <= max_tokens <= max_limit
+        
+    except Exception as e:
+        print(f"Error validating max_tokens for model {model_name}: {e}")
+        # Fallback to conservative limits
+        return 100 <= max_tokens <= 32768
 
 @router.post("/infer", response_model=InferenceResponse, responses={500: {"model": ErrorResponse}})
 async def infer(
@@ -33,12 +70,22 @@ async def infer(
         # Log the request for debugging
         print(f"Inference request: {prompt_data}")
         
-        # Validate model is available and ready (optional check)
-        # This helps catch issues early rather than getting errors from GPUStack
+        # Validate max_tokens dynamically based on model capabilities
         model_name = prompt_data.get('model')
-        if model_name:
-            # You could add model validation here if needed
-            pass
+        max_tokens = prompt_data.get('max_tokens', 4000)
+        
+        if not validate_max_tokens(model_name, max_tokens):
+            model_metadata = infer_model_metadata(model_name)
+            context_window = model_metadata.get('n_ctx', 8192)
+            safe_max = int(context_window * 0.8)
+            if context_window > 100000:
+                safe_max = int(context_window * 0.9)
+            
+            raise HTTPException(
+                status_code=422, 
+                detail=f"max_tokens ({max_tokens}) exceeds safe limit for model {model_name}. "
+                       f"Context window: {context_window}, Safe maximum: {safe_max}"
+            )
         
         result = await send_to_gpustack(prompt_data)
         
@@ -56,6 +103,11 @@ async def stream_infer(
     request: InferenceRequest,
     current_user: Annotated[User, Depends(get_current_user)]
 ):
+    print(f"=== STREAMING ENDPOINT CALLED ===")
+    print(f"Request received at /api/inference/stream")
+    print(f"User: {current_user.username}")
+    print(f"Request model: {request.model}")
+    print(f"Request messages count: {len(request.messages)}")
     """
     Generate streaming text completion using LLM models.
     
@@ -67,10 +119,32 @@ async def stream_infer(
     
     Parameters are the same as the /infer endpoint, but streaming is automatically enabled.
     """
+    print(f"=== STREAMING INFERENCE REQUEST RECEIVED ===")
+    print(f"User: {current_user.username}")
+    print(f"Request model: {request.model}")
+    print(f"Request messages count: {len(request.messages)}")
+    
     try:
         # Convert Pydantic model to dict and enable streaming
         prompt_data = request.model_dump()
         prompt_data["stream"] = True
+        
+        # Validate max_tokens dynamically based on model capabilities
+        model_name = prompt_data.get('model')
+        max_tokens = prompt_data.get('max_tokens', 4000)
+        
+        if not validate_max_tokens(model_name, max_tokens):
+            model_metadata = infer_model_metadata(model_name)
+            context_window = model_metadata.get('n_ctx', 8192)
+            safe_max = int(context_window * 0.8)
+            if context_window > 100000:
+                safe_max = int(context_window * 0.9)
+            
+            raise HTTPException(
+                status_code=422, 
+                detail=f"max_tokens ({max_tokens}) exceeds safe limit for model {model_name}. "
+                       f"Context window: {context_window}, Safe maximum: {safe_max}"
+            )
         
         print(f"Streaming inference request: {prompt_data}")
         
@@ -82,7 +156,7 @@ async def stream_infer(
         
         return StreamingResponse(
             generate(),
-            media_type="text/plain",
+            media_type="text/event-stream",
             headers={
                 "Cache-Control": "no-cache",
                 "Connection": "keep-alive",

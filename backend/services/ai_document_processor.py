@@ -53,7 +53,7 @@ class AIDocumentProcessor:
     Provides intelligent summarization, key point extraction, and semantic analysis.
     """
     
-    def __init__(self):
+    def __init__(self, model_name: str = "qwen3"):
         self.max_chunk_size = 4000  # Optimal for LLM processing
         self.summary_max_length = 500
         self.key_points_max_count = 10
@@ -67,6 +67,7 @@ class AIDocumentProcessor:
         self.max_tokens_detailed = 8000   # Increased from 1200
         self.max_tokens_semantic = 4000   # Increased from 1000
         self.max_tokens_structured = 4000 # Increased from 1000
+        self.model_name = model_name       # Configurable model name
     
     async def enhance_document_processing(
         self, 
@@ -146,7 +147,7 @@ class AIDocumentProcessor:
         
         try:
             response = await send_to_gpustack({
-                "model": "qwen3",  # Use available model
+                "model": self.model_name,  # Use configurable model
                 "messages": [{"role": "user", "content": prompt}],
                 "temperature": 0.3,
                 "max_tokens": self.max_tokens_quick
@@ -197,7 +198,7 @@ class AIDocumentProcessor:
         
         try:
             response = await send_to_gpustack({
-                "model": "qwen3-32b-bf16",  # Use available large model for detailed analysis
+                "model": self.model_name,  # Use configurable model
                 "messages": [{"role": "user", "content": detailed_prompt}],
                 "temperature": 0.2,
                 "max_tokens": self.max_tokens_detailed
@@ -241,7 +242,7 @@ class AIDocumentProcessor:
         
         try:
             response = await send_to_gpustack({
-                "model": "qwen3",  # Use available model
+                "model": self.model_name,  # Use configurable model
                 "messages": [{"role": "user", "content": semantic_prompt}],
                 "temperature": 0.1,
                 "max_tokens": self.max_tokens_semantic
@@ -288,7 +289,7 @@ class AIDocumentProcessor:
         
         try:
             response = await send_to_gpustack({
-                "model": "qwen3",  # Use available model
+                "model": self.model_name,  # Use configurable model
                 "messages": [{"role": "user", "content": structured_prompt}],
                 "temperature": 0.3,
                 "max_tokens": self.max_tokens_structured

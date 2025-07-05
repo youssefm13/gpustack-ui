@@ -30,7 +30,7 @@ async def web_search(
     try:
         # Use shared HTTP client from app state
         http_client = getattr(req.app.state, 'http_client', None)
-        result = await perform_web_search_async(request.q, http_client)
+        result = await perform_web_search_async(request.q, http_client, request.model)
         return {"result": result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

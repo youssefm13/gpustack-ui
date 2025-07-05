@@ -11,11 +11,12 @@ services:
       - "8001:8001"
     environment:
       - ENV=production
+      - GPUSTACK_API_BASE=http://192.168.1.231:80
+      - GPUSTACK_API_TOKEN=gpustack_d832b8eaabea94da_367798f8b89db33600d335d622531e1b
       - JWT_SECRET_KEY=${JWT_SECRET_KEY:-your-super-secret-jwt-key-change-in-production}
       - LOG_LEVEL=info
       - WORKERS=4
     volumes:
-      - ./.env.prod:/app/.env.prod:ro
       - ./logs:/app/logs
       - ./uploads:/app/uploads
     restart: unless-stopped

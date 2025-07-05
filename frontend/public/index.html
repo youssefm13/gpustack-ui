@@ -632,10 +632,20 @@
 
     <script>
         // Cache buster: 2025-06-29-21:50:52
+        console.log('Script starting...');
+        
+                console.log('About to declare API_BASE...');
+        // DECLARE ALL VARIABLES FIRST - before any functions that might reference them
         const API_BASE = window.CONFIG ? window.CONFIG.BACKEND_URL : 'http://localhost:8001';
+        console.log('API_BASE declared:', API_BASE);
+        
         let conversationContext = [];
-        let currentModel = 'qwen3';
+        let currentModel = localStorage.getItem('selectedModel') || 'qwen3';
         let availableModels = [];
+        
+        // Authentication state
+        let token = localStorage.getItem('authToken') || null;
+        let refreshToken = localStorage.getItem('refreshToken') || null;
         
         // Streaming state tracking
         let currentAbortController = null;
@@ -649,7 +659,21 @@
             totalTokens: 0,
             isFirstToken: true
         };
-
+        
+        // Additional variables that might be referenced
+        let currentConversationId = null;
+        let conversationHistoryVisible = false;
+        
+        // Make variables accessible on window object for debugging
+        window.API_BASE = API_BASE;
+        window.token = token;
+        window.isStreaming = isStreaming;
+        window.conversationContext = conversationContext;
+        window.currentModel = currentModel;
+        window.availableModels = availableModels;
+        
+        console.log('All variables defined successfully');
+        
         // Check backend connection and load models on page load
         window.onload = function() {
             checkConnection();
@@ -826,6 +850,9 @@
                 return;
             }
             
+            console.log('sendMessage called with token:', token ? 'present' : 'missing');
+            console.log('API_BASE:', API_BASE);
+            
             const input = document.getElementById('messageInput');
             const message = input.value.trim();
             
@@ -874,14 +901,38 @@
             console.log('Conversation context being sent to AI:', conversationContext);
             console.log('User message:', message);
             
+            // Debug conversation context
+            debugConversationContext();
+            
+            console.log('About to manage conversation context...');
             // Manage conversation context before sending
             manageConversationContext();
             
-            // Debug conversation context
-            debugConversationContext();
+            console.log('About to calculate max tokens...');
+            console.log('Max tokens calculated:', maxTokens);
+            
+            console.log('About to create streaming message...');
+            console.log('Streaming message ID:', streamingMessageId);
 
             try {
                 // Try streaming first
+                console.log('Making streaming request to:', `${API_BASE}/api/inference/stream`);
+                console.log('Request headers:', getAuthHeaders());
+                console.log('Request body:', {
+                    model: currentModel,
+                    messages: [
+                        ...conversationContext,
+                        { role: "user", content: message }
+                    ],
+                    temperature: 0.7,
+                    max_tokens: maxTokens,
+                    repetition_penalty: 1.1,
+                    frequency_penalty: 0.3,
+                    presence_penalty: 0.1,
+                    top_p: 0.9
+                });
+                
+                console.log('About to make fetch request...');
                 const response = await fetch(`${API_BASE}/api/inference/stream`, {
                     method: 'POST',
                     headers: getAuthHeaders(),
@@ -900,8 +951,14 @@
                         top_p: 0.9
                     })
                 });
+                
+                console.log('Fetch request completed');
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+                console.log('Response body exists:', !!response.body);
 
                 if (response.ok && response.body) {
+                    console.log('Starting to process streaming response...');
                     const reader = response.body.getReader();
                     const decoder = new TextDecoder();
                     
@@ -909,21 +966,28 @@
                         while (true) {
                             // Check if request was aborted
                             if (currentAbortController.signal.aborted) {
+                                console.log('Request was aborted, stopping stream processing');
                                 reader.cancel();
                                 break;
                             }
                             
                             const { value, done } = await reader.read();
-                            if (done) break;
+                            if (done) {
+                                console.log('Stream processing complete');
+                                break;
+                            }
                             
                             const chunk = decoder.decode(value);
+                            console.log('Received chunk:', chunk);
                             const lines = chunk.split('\n');
                             
                             for (const line of lines) {
                                 if (line.startsWith('data: ')) {
                                     const data = line.slice(6).trim();
+                                    console.log('Processing data line:', data);
                                     
                                     if (data === '[DONE]') {
+                                        console.log('Received [DONE] signal');
                                         break;
                                     }
                                     
@@ -931,21 +995,25 @@
                                         try {
                                             const parsed = JSON.parse(data);
                                             const content = parsed.choices?.[0]?.delta?.content || '';
+                                            console.log('Parsed content:', content);
                                             
                                             if (content) {
                                                 // Track first token time
                                                 if (responseMetrics.isFirstToken) {
                                                     responseMetrics.firstTokenTime = performance.now();
                                                     responseMetrics.isFirstToken = false;
+                                                    console.log('First token received');
                                                 }
                                                 
                                                 // Count tokens (approximate)
                                                 responseMetrics.totalTokens += content.length;
                                                 
                                                 fullResponse += content;
+                                                console.log('Updating streaming message with:', fullResponse.substring(0, 50) + '...');
                                                 updateStreamingMessage(streamingMessageId, fullResponse);
                                             }
                                         } catch (e) {
+                                            console.log('JSON parse error:', e);
                                             // Ignore JSON parse errors
                                         }
                                     }
@@ -1163,6 +1231,7 @@
                     formData.append(paramName, file);
                 });
                 formData.append('analysis_mode', analysisMode);
+                formData.append('model_name', currentModel);
 
                 // Determine endpoint based on file count
                 const endpoint = selectedFiles.length === 1 ? '/api/files/upload' : '/api/files/upload/batch';
@@ -1364,7 +1433,7 @@
                 const response = await fetch(`${API_BASE}/api/tools/search`, {
                     method: 'POST',
                     headers: getAuthHeaders(),
-                    body: JSON.stringify({ q: query })
+                    body: JSON.stringify({ q: query, model: currentModel })
                 });
 
                 if (response.ok) {
@@ -1879,7 +1948,7 @@
             const selector = document.getElementById('modelSelector');
             
             if (availableModels.length === 0) {
-                selector.innerHTML = '<option value="qwen3">Qwen3 (Loading...)</option>';
+                selector.innerHTML = `<option value="${currentModel}">${currentModel} (Loading...)</option>`;
                 return;
             }
             
@@ -1933,7 +2002,9 @@
                         console.log(`Model ${currentModel} is not ready (${model.status}), switching to ${readyModel.name}`);
                         currentModel = readyModel.name;
                         localStorage.setItem('selectedModel', currentModel);
-                        addMessageToChat('system', `⚠️ Model '${model.name}' is not available (${model.status}). Switched to '${readyModel.name}'.`);
+                        addMessageToChat('system', `⚠️ Model '${model.name}' is not available (${model.status_description || model.status}). Switched to '${readyModel.name}'.`);
+                    } else if (!readyModel) {
+                        addMessageToChat('system', `❌ No models are currently available. Please check GPUStack configuration.`);
                     }
                 }
                 
@@ -1942,6 +2013,9 @@
             
             // Update model info panel
             updateModelInfo();
+            
+            // Show model availability summary
+            showModelAvailabilitySummary();
         }
         
         // Handle model change
@@ -2150,6 +2224,33 @@
             // Show success message
             const formatName = format.charAt(0).toUpperCase() + format.slice(1);
             addMessageToChat('system', `✅ Conversation exported as ${formatName}! (${messages.length} messages)`);
+        }
+        
+        // Show model availability summary
+        function showModelAvailabilitySummary() {
+            const readyModels = availableModels.filter(m => m.status === 'ready');
+            const errorModels = availableModels.filter(m => m.status === 'error');
+            const loadingModels = availableModels.filter(m => m.status === 'loading');
+            
+            if (readyModels.length === 0) {
+                addMessageToChat('system', `❌ No models are currently available. Please check GPUStack configuration.`);
+                return;
+            }
+            
+            if (errorModels.length > 0) {
+                const errorModelNames = errorModels.map(m => m.name).join(', ');
+                addMessageToChat('system', `⚠️ ${errorModels.length} model(s) are not available: ${errorModelNames}`);
+            }
+            
+            if (loadingModels.length > 0) {
+                const loadingModelNames = loadingModels.map(m => m.name).join(', ');
+                addMessageToChat('system', `⏳ ${loadingModels.length} model(s) are loading: ${loadingModelNames}`);
+            }
+            
+            if (readyModels.length > 0) {
+                const readyModelNames = readyModels.map(m => m.name).join(', ');
+                addMessageToChat('system', `✅ ${readyModels.length} model(s) are ready: ${readyModelNames}`);
+            }
         }
         
         function exportAsMarkdown(messages) {
@@ -2485,7 +2586,6 @@
         }
         
         // Authentication functionality
-        let token = localStorage.getItem('authToken') || null;
         
         function updateAuthUI(isLoggedIn, userData = null) {
             const loginForm = document.getElementById('loginForm');
@@ -3175,8 +3275,7 @@
         }
         
         // Conversation History Variables
-        let currentConversationId = null;
-        let conversationHistoryVisible = false;
+        // Note: currentConversationId and conversationHistoryVisible are already declared at the top
         
         // Conversation History Functions
         function toggleConversationSidebar() {
@@ -3557,12 +3656,16 @@
         
         // Save messages to current conversation automatically
         async function saveMessageToConversation(role, content) {
+            console.log('saveMessageToConversation called:', { role, content: content.substring(0, 50) + '...', currentConversationId });
+            
             if (!token || !currentConversationId) {
+                console.log('No token or conversation ID, skipping save');
                 return; // No conversation to save to
             }
             
             try {
-                await fetch(`${API_BASE}/api/conversations/${currentConversationId}/messages`, {
+                console.log('Saving message to conversation:', currentConversationId);
+                const response = await fetch(`${API_BASE}/api/conversations/${currentConversationId}/messages`, {
                     method: 'POST',
                     headers: getAuthHeaders(),
                     body: JSON.stringify({
@@ -3574,6 +3677,13 @@
                         }
                     })
                 });
+                
+                console.log('Save message response status:', response.status);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Failed to save message:', response.status, errorText);
+                }
                 
                 // Refresh stats
                 if (conversationHistoryVisible) {
@@ -3601,28 +3711,8 @@
             }
         }
         
-        // Initialize theme when page loads
-        document.addEventListener('DOMContentLoaded', () => {
-            initTheme();
-            initModelPreference();
-            
-            // Ensure authentication required state is shown initially if no token
-            if (!token) {
-                updateAuthUI(false);
-            }
-            
-            checkAuthOnLoad();
-            
-            // Add logout button event listeners to ALL logout buttons
-            const logoutButtons = Array.from(document.querySelectorAll('button')).filter(btn => 
-                btn.textContent.includes('Logout')
-            );
-            console.log('Found logout buttons:', logoutButtons.length);
-            logoutButtons.forEach((btn, index) => {
-                console.log(`Adding listener to logout button ${index}:`, btn.id || 'no-id');
-                btn.addEventListener('click', logout);
-            });
-        });
+        // Initialize theme when page loads - MOVED TO END OF SCRIPT
+        // This will be called at the very end after all variables and functions are defined
 
         // Debug function to log conversation context
         function debugConversationContext() {
@@ -3675,6 +3765,34 @@
                 });
             }
         }
+        
+        // Initialize theme when page loads - MOVED TO END OF SCRIPT
+        // This will be called at the very end after all variables and functions are defined
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('DOMContentLoaded event fired - all variables should be defined now');
+            console.log('token available:', typeof token !== 'undefined');
+            console.log('API_BASE available:', typeof API_BASE !== 'undefined');
+            
+            initTheme();
+            initModelPreference();
+            
+            // Ensure authentication required state is shown initially if no token
+            if (!token) {
+                updateAuthUI(false);
+            }
+            
+            checkAuthOnLoad();
+            
+            // Add logout button event listeners to ALL logout buttons
+            const logoutButtons = Array.from(document.querySelectorAll('button')).filter(btn => 
+                btn.textContent.includes('Logout')
+            );
+            console.log('Found logout buttons:', logoutButtons.length);
+            logoutButtons.forEach((btn, index) => {
+                console.log(`Adding listener to logout button ${index}:`, btn.id || 'no-id');
+                btn.addEventListener('click', logout);
+            });
+        });
     </script>
 </body>
 </html>

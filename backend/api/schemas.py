@@ -102,7 +102,7 @@ class InferenceRequest(BaseModel):
         ]
     )
     temperature: Optional[float] = Field(0.7, ge=0.0, le=2.0, description="Sampling temperature")
-    max_tokens: Optional[int] = Field(4000, gt=0, le=32768, description="Maximum tokens to generate (supports up to 32,768 for large models)")
+    max_tokens: Optional[int] = Field(4000, gt=0, description="Maximum tokens to generate (dynamically validated based on model capabilities)")
     stream: Optional[bool] = Field(False, description="Whether to stream the response")
     top_p: Optional[float] = Field(0.9, ge=0.0, le=1.0, description="Top-p sampling parameter")
     frequency_penalty: Optional[float] = Field(0.0, ge=-2.0, le=2.0, description="Frequency penalty")
@@ -136,6 +136,7 @@ class InferenceResponse(BaseModel):
 class SearchRequest(BaseModel):
     """Web search request model."""
     q: str = Field(..., description="Search query", example="latest developments in AI")
+    model: Optional[str] = Field("qwen3", description="Model to use for AI processing", example="qwen3")
 
 class SearchResult(BaseModel):
     """Individual search result."""

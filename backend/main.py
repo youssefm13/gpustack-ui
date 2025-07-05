@@ -120,6 +120,18 @@ app.middleware("http")(track_connections_middleware)
 # Add Enhanced JWT middleware
 app.add_middleware(EnhancedJWTMiddleware)
 
+# Add request logging middleware
+@app.middleware("http")
+async def log_requests(request, call_next):
+    print(f"=== INCOMING REQUEST ===")
+    print(f"Method: {request.method}")
+    print(f"URL: {request.url}")
+    print(f"Headers: {dict(request.headers)}")
+    response = await call_next(request)
+    print(f"Response status: {response.status_code}")
+    print(f"=== END REQUEST ===")
+    return response
+
 app.include_router(files.router, prefix="/api/files", tags=["files"])
 app.include_router(tools.router, prefix="/api/tools", tags=["tools"])
 app.include_router(inference.router, prefix="/api/inference", tags=["inference"])

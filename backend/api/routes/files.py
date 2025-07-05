@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 async def upload_file(
     file: UploadFile = File(...),
     analysis_mode: Optional[str] = Form("quick"),
+    model_name: Optional[str] = Form("qwen3"),
     current_user: Annotated[User, Depends(get_current_user)] = None
 ) -> FileUploadResponse:
     """
@@ -66,8 +67,12 @@ async def upload_file(
         # Process file with enhanced capabilities
         result = await file_processor.process_file(file)
         
+        # Create AI document processor with selected model
+        from services.ai_document_processor import AIDocumentProcessor
+        ai_processor = AIDocumentProcessor(model_name=model_name)
+        
         # Apply AI-powered analysis
-        enhanced_result = await ai_document_processor.enhance_document_processing(result, mode)
+        enhanced_result = await ai_processor.enhance_document_processing(result, mode)
         
         # Log processing results for debugging
         logger.info(f"Processed file: {enhanced_result.get('filename')} ({enhanced_result.get('content_type')}) with {mode.value} analysis")
@@ -121,6 +126,7 @@ async def upload_file(
 async def upload_files_batch(
     files: List[UploadFile] = File(...),
     analysis_mode: Optional[str] = Form("quick"),
+    model_name: Optional[str] = Form("qwen3"),
     current_user: Annotated[User, Depends(get_current_user)] = None
 ) -> BatchFileUploadResponse:
     """
@@ -162,7 +168,7 @@ async def upload_files_batch(
         # Process files in parallel
         processing_tasks = []
         for file in files:
-            task = asyncio.create_task(process_single_file(file, mode))
+            task = asyncio.create_task(process_single_file(file, mode, model_name))
             processing_tasks.append(task)
         
         # Wait for all files to be processed
@@ -220,7 +226,7 @@ async def upload_file_legacy(
     content = await process_file(file)
     return {"content": content}
 
-async def process_single_file(file: UploadFile, mode: DocumentAnalysisMode) -> dict:
+async def process_single_file(file: UploadFile, mode: DocumentAnalysisMode, model_name: str = "qwen3") -> dict:
     """Process a single file with error handling."""
     try:
         # Check file size
@@ -230,8 +236,12 @@ async def process_single_file(file: UploadFile, mode: DocumentAnalysisMode) -> d
         # Process file
         result = await file_processor.process_file(file)
         
+        # Create AI document processor with selected model
+        from services.ai_document_processor import AIDocumentProcessor
+        ai_processor = AIDocumentProcessor(model_name=model_name)
+        
         # Apply AI analysis
-        enhanced_result = await ai_document_processor.enhance_document_processing(result, mode)
+        enhanced_result = await ai_processor.enhance_document_processing(result, mode)
         
         # Extract AI insights
         ai_insights = enhanced_result.get("ai_insights")
